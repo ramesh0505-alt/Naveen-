@@ -21,7 +21,7 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
   onJoined,
   onCancel,
 }) => {
-  const [roomCode, setRoomCode] = useState<string>(initialRoomCode);
+  const [roomCode, setRoomCode] = useState<string>(() => extractCode(initialRoomCode));
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [isJoining, setIsJoining] = useState<boolean>(false);
   const [isCheckingRoom, setIsCheckingRoom] = useState<boolean>(false);
@@ -31,11 +31,36 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Automatically check room status when code reaches 8 alphanumeric chars
+  function extractCode(raw: string): string {
+    if (!raw) return '';
+    let cleaned = raw.trim();
+    const urlMatch = cleaned.match(/(?:private|room|join)\/([a-zA-Z0-9_-]+)/i);
+    if (urlMatch && urlMatch[1]) {
+      return urlMatch[1].toUpperCase();
+    }
+    const queryMatch = cleaned.match(/[?&](?:room|code|r)=([a-zA-Z0-9_-]+)/i);
+    if (queryMatch && queryMatch[1]) {
+      return queryMatch[1].toUpperCase();
+    }
+    return cleaned.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  }
+
+  // Sync if initialRoomCode prop updates
   useEffect(() => {
-    const clean = roomCode.trim().toUpperCase();
-    if (clean.length === 8) {
-      checkRoom(clean);
+    if (initialRoomCode) {
+      const parsed = extractCode(initialRoomCode);
+      if (parsed) setRoomCode(parsed);
+    }
+  }, [initialRoomCode]);
+
+  // Automatically check room status when code reaches 6+ alphanumeric chars
+  useEffect(() => {
+    const clean = extractCode(roomCode);
+    if (clean.length >= 6) {
+      const timer = setTimeout(() => {
+        checkRoom(clean);
+      }, 250);
+      return () => clearTimeout(timer);
     } else {
       setRoomInfo(null);
     }
@@ -79,6 +104,13 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
     if (char && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
+  };
+
+  const handleRoomCodeInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    const extracted = extractCode(val);
+    setRoomCode(extracted || val.trim().toUpperCase());
+    setError(null);
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -217,9 +249,8 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
                 <input
                   type="text"
                   value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. 8KX92LMQ"
-                  maxLength={12}
+                  onChange={handleRoomCodeInputChange}
+                  placeholder="e.g. 8KX92LMQ or paste invite link"
                   id="room-code-input"
                   className="w-full h-11 text-center font-mono text-sm tracking-widest bg-[#2d3449]/40 border border-white/5 rounded-xl text-[#dae2fd] shadow-inner focus:outline-none focus:ring-2 focus:ring-[#adc6ff]/50 transition-all uppercase"
                 />

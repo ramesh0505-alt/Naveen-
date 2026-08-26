@@ -94,7 +94,7 @@ export default function App() {
     const pathname = window.location.pathname;
     const matchPath = pathname.match(/\/(?:private|room|join)\/([a-zA-Z0-9_-]+)/);
     if (matchPath && matchPath[1]) {
-      setRoomCode(matchPath[1]);
+      setRoomCode(matchPath[1].toUpperCase());
       setCurrentScreen('JOIN');
       return;
     }
@@ -102,14 +102,14 @@ export default function App() {
     const searchParams = new URLSearchParams(window.location.search);
     const queryRoom = searchParams.get('room') || searchParams.get('code') || searchParams.get('r');
     if (queryRoom) {
-      setRoomCode(queryRoom);
+      setRoomCode(queryRoom.toUpperCase());
       setCurrentScreen('JOIN');
       return;
     }
 
-    const hash = window.location.hash.replace(/^#\/?(room\/|join\/)?/, '');
+    const hash = window.location.hash.replace(/^#\/?(room\/|join\/|private\/)?/, '');
     if (hash && hash.length >= 4 && hash.length <= 20) {
-      setRoomCode(hash);
+      setRoomCode(hash.toUpperCase());
       setCurrentScreen('JOIN');
     }
   }, []);

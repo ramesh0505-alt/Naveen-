@@ -54,8 +54,27 @@ const pinAttempts = new Map<string, { count: number; lockedUntil: number }>(); /
 const activeSockets = new Map<WebSocket, SocketClient>();
 
 // Cryptographic helpers
+function normalizeRoomCode(code: string): string {
+  if (!code) return "";
+  return code.trim().toUpperCase();
+}
+
+function findRoom(rawCode: string): StoredRoom | undefined {
+  if (!rawCode) return undefined;
+  const normalized = normalizeRoomCode(rawCode);
+  const direct = rooms.get(rawCode) || rooms.get(normalized);
+  if (direct) return direct;
+  for (const [key, room] of rooms.entries()) {
+    if (key.toUpperCase() === normalized) {
+      return room;
+    }
+  }
+  return undefined;
+}
+
 function generateRoomCode(): string {
-  const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz";
+  // Use clear, unambiguous uppercase alphanumeric characters (no 0/O, 1/I, l)
+  const chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
   let code = "";
   const randomBytes = crypto.randomBytes(8);
   for (let i = 0; i < 8; i++) {
@@ -247,7 +266,7 @@ async function startServer() {
       return res.status(401).json({ error: "Session expired" });
     }
 
-    const room = rooms.get(session.roomCode);
+    const room = findRoom(session.roomCode);
     if (!room) {
       return res.status(404).json({ error: "Room not found" });
     }
@@ -271,7 +290,7 @@ async function startServer() {
       const expiresAt = now + durationHours * 60 * 60 * 1000;
 
       let roomCode = generateRoomCode();
-      while (rooms.has(roomCode)) {
+      while (findRoom(roomCode)) {
         roomCode = generateRoomCode();
       }
 
@@ -327,10 +346,10 @@ async function startServer() {
   // 2. Public Room Info
   app.get("/api/rooms/:roomCode/info", (req, res) => {
     const { roomCode } = req.params;
-    const room = rooms.get(roomCode);
+    const room = findRoom(roomCode);
 
     if (!room) {
-      return res.status(404).json({ exists: false, error: "Room not found" });
+      return res.status(404).json({ exists: false, error: "Room not found or expired." });
     }
 
     const now = Date.now();
@@ -362,8 +381,13 @@ async function startServer() {
     const { roomCode } = req.params;
     const { pin } = req.body;
 
+    const room = findRoom(roomCode);
+    if (!room) {
+      return res.status(404).json({ error: "Room not found or expired. Check room code." });
+    }
+
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    const rateLimitKey = `${ip}_${roomCode}`;
+    const rateLimitKey = `${ip}_${room.roomCode}`;
     const attemptRecord = pinAttempts.get(rateLimitKey);
 
     const now = Date.now();
@@ -372,11 +396,6 @@ async function startServer() {
       return res.status(429).json({
         error: `Too many failed attempts. Please wait ${waitSeconds}s before trying again.`,
       });
-    }
-
-    const room = rooms.get(roomCode);
-    if (!room) {
-      return res.status(404).json({ error: "Room not found" });
     }
 
     if (room.expiresAt <= now || room.status === "EXPIRED") {
@@ -388,12 +407,8 @@ async function startServer() {
       return res.status(410).json({ error: "This room is no longer available." });
     }
 
-    if (room.guestSessionId && room.ownerSessionId) {
-      return res.status(403).json({ error: "This private room is already full." });
-    }
-
     if (!pin || typeof pin !== "string") {
-      return res.status(400).json({ error: "PIN is required." });
+      return res.status(400).json({ error: "6-digit PIN is required." });
     }
 
     // Verify PIN
@@ -405,7 +420,7 @@ async function startServer() {
 
       const attemptsRemaining = 5 - count;
       return res.status(401).json({
-        error: "Incorrect PIN.",
+        error: "Incorrect PIN. Please double-check the 6-digit code.",
         attemptsRemaining: attemptsRemaining > 0 ? attemptsRemaining : 0,
       });
     }
@@ -413,14 +428,18 @@ async function startServer() {
     // PIN is correct - clear rate limiting
     pinAttempts.delete(rateLimitKey);
 
-    // Create guest session
-    const guestSessionId = generateSessionToken();
-    room.guestSessionId = guestSessionId;
+    // Reuse existing guest session or create new one (allowing seamless re-entry)
+    let guestSessionId = room.guestSessionId;
+    if (!guestSessionId || !sessions.has(guestSessionId)) {
+      guestSessionId = generateSessionToken();
+      room.guestSessionId = guestSessionId;
+    }
+
     room.status = "ACTIVE";
 
     const guestSession: StoredSession = {
       sessionId: guestSessionId,
-      roomCode,
+      roomCode: room.roomCode,
       role: "guest",
       createdAt: now,
       expiresAt: room.expiresAt,
@@ -430,10 +449,11 @@ async function startServer() {
     sessions.set(guestSessionId, guestSession);
 
     // Notify room of active state
-    updatePresence(roomCode);
+    updatePresence(room.roomCode);
 
     return res.json({
       success: true,
+      roomCode: room.roomCode,
       sessionToken: guestSessionId,
       role: "guest",
       expiresAt: room.expiresAt,
@@ -724,9 +744,9 @@ async function startServer() {
         if (msg.type === "auth") {
           const { roomCode, sessionToken } = msg;
           const session = sessions.get(sessionToken);
-          const room = rooms.get(roomCode);
+          const room = findRoom(roomCode);
 
-          if (!session || !room || session.roomCode !== roomCode || session.expiresAt <= Date.now()) {
+          if (!session || !room || session.roomCode.toUpperCase() !== room.roomCode.toUpperCase() || session.expiresAt <= Date.now()) {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ type: "auth:error", message: "Invalid or expired session" }));
             }
