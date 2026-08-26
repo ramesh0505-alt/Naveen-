@@ -13,6 +13,7 @@ import { ChatView } from './components/ChatView';
 import { AudioCallModal } from './components/AudioCallModal';
 import { RoomExpiredView } from './components/RoomExpiredView';
 import { SettingsModal } from './components/SettingsModal';
+import { ProfileView } from './components/ProfileView';
 import { WebRTCCallManager } from './utils/webrtc';
 import { SoundEffects, unlockAudioContext } from './utils/audio';
 import { triggerHaptic, isMobileDevice } from './utils/helpers';
@@ -43,6 +44,7 @@ export default function App() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false);
 
@@ -879,11 +881,9 @@ export default function App() {
           roomStatus={roomInfo?.status}
           memberCount={memberCount}
           onNavigateHome={handleGoHome}
-          onOpenInstall={() => setIsInstallModalOpen(true)}
+          onOpenProfile={() => setIsProfileModalOpen(true)}
           onOpenSettings={() => setIsSettingsModalOpen(true)}
           isLowDataActive={isLowData}
-          isFrameMode={isFrameMode}
-          onToggleFrameMode={() => setIsFrameMode(!isFrameMode)}
         />
 
         {/* Main Screen Views */}
@@ -972,9 +972,25 @@ export default function App() {
           onNavigateHome={handleGoHome}
           onOpenCreate={() => setIsCreateModalOpen(true)}
           onOpenJoin={() => setCurrentScreen('JOIN')}
-          onOpenInstall={() => setIsInstallModalOpen(true)}
+          onOpenProfile={() => setIsProfileModalOpen(true)}
+          onOpenRoomInfo={() => setIsSettingsModalOpen(true)}
           onOpenSettings={() => setIsSettingsModalOpen(true)}
-          isLowDataActive={isLowData}
+          onStartCall={handleStartCall}
+          isCallActive={callState !== 'IDLE'}
+        />
+
+        {/* Private Profile & Preferences Modal */}
+        <ProfileView
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          currentRoomCode={roomCode || undefined}
+          hasActiveSession={Boolean(roomCode && sessionToken)}
+          onLeaveRoom={handleGoHome}
+          onClearSession={handleClearConversation}
+          onTerminate={() => {
+            handleCloseRoom();
+            setIsProfileModalOpen(false);
+          }}
         />
 
         {/* Create Room Modal */}

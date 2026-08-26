@@ -1,7 +1,20 @@
 import React, { useState } from 'react';
-import { KeyRound, Check, Copy, ArrowRight, ShieldCheck, Lock, Sparkles, Loader2, X } from 'lucide-react';
+import {
+  KeyRound,
+  Check,
+  Copy,
+  ArrowRight,
+  ShieldCheck,
+  Share2,
+  LogIn,
+  Loader2,
+  X,
+  Lock,
+  CheckCircle2,
+  Sparkles
+} from 'lucide-react';
 import { apiRequest } from '../utils/api';
-import { copyToClipboard, getRoomFullUrl } from '../utils/helpers';
+import { copyToClipboard, getRoomFullUrl, triggerHaptic } from '../utils/helpers';
 
 interface CreateRoomModalProps {
   isOpen: boolean;
@@ -29,13 +42,20 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   } | null>(null);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [copiedPin, setCopiedPin] = useState<boolean>(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
   const handleCreate = async () => {
     setIsGenerating(true);
     setError(null);
+    triggerHaptic('medium');
 
     try {
       const data = await apiRequest('/api/rooms', {
@@ -53,8 +73,10 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
         sessionToken: data.sessionToken,
         expiresAt: data.expiresAt,
       });
+      triggerHaptic('success');
     } catch (err: any) {
       setError(err.message || 'Failed to establish room.');
+      triggerHaptic('warning');
     } finally {
       setIsGenerating(false);
     }
@@ -64,24 +86,51 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
 
   const handleCopyLink = async () => {
     if (!roomUrl) return;
+    triggerHaptic('light');
     const ok = await copyToClipboard(roomUrl);
     if (ok) {
       setCopiedLink(true);
+      showToast('Link copied to clipboard');
       setTimeout(() => setCopiedLink(false), 2000);
     }
   };
 
   const handleCopyPin = async () => {
     if (!createdData?.pin) return;
+    triggerHaptic('light');
     const ok = await copyToClipboard(createdData.pin);
     if (ok) {
       setCopiedPin(true);
+      showToast('PIN copied to clipboard');
       setTimeout(() => setCopiedPin(false), 2000);
+    }
+  };
+
+  const handleShareDetails = async () => {
+    if (!createdData) return;
+    triggerHaptic('light');
+    const text = `Private 2-person space\nLink: ${roomUrl}\nAccess PIN: ${createdData.pin}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Join my private room',
+          text,
+          url: roomUrl,
+        });
+        return;
+      } catch {
+        // Fallback to clipboard
+      }
+    }
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      showToast('Room details copied to clipboard');
     }
   };
 
   const handleEnter = () => {
     if (!createdData) return;
+    triggerHaptic('medium');
     onRoomCreated({
       roomCode: createdData.roomCode,
       pin: createdData.pin,
@@ -92,142 +141,170 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b1326]/85 backdrop-blur-xl animate-fade-in font-sans">
-      {/* Ambient Background Glow */}
-      <div className="absolute inset-0 pointer-events-none opacity-25 flex justify-center items-center overflow-hidden">
-        <div className="w-[500px] h-[500px] rounded-full bg-[#4d8eff]/20 blur-[100px] animate-pulse"></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b1326]/85 backdrop-blur-2xl animate-fade-in font-sans selection:bg-[#4d8eff]/30 selection:text-white">
+      {/* Ambient Background Glow Effect */}
+      <div className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center opacity-30">
+        <div className="w-[450px] h-[450px] rounded-full bg-[#adc6ff]/15 blur-[90px] animate-pulse"></div>
       </div>
 
       {/* Main Card Container */}
       <div
-        id="card-container"
-        className="relative z-10 w-full max-w-sm bg-[#171f33]/80 backdrop-blur-3xl rounded-[32px] p-7 sm:p-8 shadow-[0_32px_64px_rgba(0,0,0,0.6)] flex flex-col items-center text-center border border-white/5 animate-scale-up"
+        id="room-card"
+        className="w-full max-w-sm relative z-10 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]"
         role="dialog"
         aria-modal="true"
       >
-        {/* Close Button Top-Right */}
-        <button
-          onClick={onClose}
-          id="close-create-modal-btn"
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#222a3d]/80 text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#2d3449] flex items-center justify-center transition-colors cursor-pointer"
-          title="Close"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {/* Glassmorphism Card Surface */}
+        <div className="bg-[#171f33]/85 backdrop-blur-2xl rounded-3xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.6)] relative overflow-hidden border border-white/10">
+          {/* Subtle Top Edge Highlight */}
+          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"></div>
 
-        {/* Top Icon */}
-        <div
-          id="header-icon"
-          className="w-16 h-16 rounded-full bg-[#4d8eff]/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(77,142,255,0.2)] transition-all duration-300"
-        >
-          {createdData ? (
-            <Lock className="w-8 h-8 text-[#adc6ff]" />
+          {/* Close Button */}
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              onClose();
+            }}
+            id="close-create-modal-btn"
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#222a3d]/80 text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#2d3449] flex items-center justify-center transition-colors cursor-pointer"
+            title="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          {error && (
+            <div className="w-full p-3 mb-4 rounded-xl bg-[#93000a]/40 border border-[#ffb4ab]/30 text-xs text-[#ffdad6] text-left font-mono">
+              {error}
+            </div>
+          )}
+
+          {!createdData ? (
+            /* Initial State */
+            <div className="flex flex-col items-center text-center py-2" id="initial-state">
+              <div className="w-16 h-16 rounded-full bg-[#3e495d]/50 flex items-center justify-center mb-4 shadow-inner border border-white/5">
+                <KeyRound className="w-8 h-8 text-[#adc6ff]" />
+              </div>
+
+              <h1 className="text-2xl font-semibold text-[#dae2fd] mb-2 tracking-tight">
+                Create Private Room
+              </h1>
+              <p className="text-sm text-[#c2c6d6] mb-8 leading-relaxed px-2">
+                Create a secure communication space for exactly two people.
+              </p>
+
+              <button
+                onClick={handleCreate}
+                disabled={isGenerating}
+                id="create-btn"
+                className="w-full py-4 px-6 rounded-full bg-[#adc6ff] text-[#002e6a] font-semibold text-base shadow-[0_0_20px_rgba(173,198,255,0.25)] hover:shadow-[0_0_30px_rgba(173,198,255,0.45)] hover:bg-[#d8e2ff] transition-all active:scale-95 flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-50"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Establishing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Create Room</span>
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+            </div>
           ) : (
-            <KeyRound className="w-8 h-8 text-[#adc6ff]" />
+            /* Success State */
+            <div className="flex flex-col animate-fade-in py-1" id="success-state">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-full bg-[#adc6ff]/20 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-6 h-6 text-[#adc6ff]" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-[#dae2fd] uppercase tracking-wider">
+                    Room Created
+                  </h2>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#ffb786] pulsate"></div>
+                    <span className="text-[11px] font-mono text-[#ffb786] font-medium">
+                      Expires in 23:59:59
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                {/* Shareable Link Field */}
+                <div className="flex flex-col gap-1 text-left">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-[#c2c6d6] ml-2">
+                    Shareable Link
+                  </span>
+                  <div className="flex items-center bg-[#222a3d]/70 rounded-xl p-1 pl-4 group hover:bg-[#222a3d] transition-colors border border-white/5">
+                    <span className="text-sm font-mono text-[#adc6ff] truncate flex-1 select-all">
+                      {roomUrl.replace(/^https?:\/\//, '')}
+                    </span>
+                    <button
+                      aria-label="Copy Link"
+                      onClick={handleCopyLink}
+                      id="copy-created-link-btn"
+                      className="w-10 h-10 flex items-center justify-center rounded-lg text-[#c2c6d6] hover:text-[#adc6ff] hover:bg-[#adc6ff]/10 transition-colors cursor-pointer"
+                    >
+                      {copiedLink ? <Check className="w-4 h-4 text-[#adc6ff]" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Access PIN Field */}
+                <div className="flex flex-col gap-1 text-left">
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-[#c2c6d6] ml-2">
+                    Access PIN
+                  </span>
+                  <div className="flex items-center bg-[#222a3d]/70 rounded-xl p-1 pl-4 group hover:bg-[#222a3d] transition-colors border border-white/5">
+                    <span className="text-xl font-mono font-bold tracking-[0.25em] text-[#dae2fd] flex-1 select-all">
+                      {createdData.pin}
+                    </span>
+                    <button
+                      aria-label="Copy PIN"
+                      onClick={handleCopyPin}
+                      id="copy-created-pin-btn"
+                      className="w-10 h-10 flex items-center justify-center rounded-lg text-[#c2c6d6] hover:text-[#adc6ff] hover:bg-[#adc6ff]/10 transition-colors cursor-pointer"
+                    >
+                      {copiedPin ? <Check className="w-4 h-4 text-[#adc6ff]" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={handleEnter}
+                  id="enter-created-room-btn"
+                  className="w-full py-3.5 px-6 rounded-full bg-[#adc6ff] text-[#002e6a] font-semibold text-base shadow-[0_0_20px_rgba(173,198,255,0.25)] hover:shadow-[0_0_30px_rgba(173,198,255,0.45)] hover:bg-[#d8e2ff] transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span>Enter Room</span>
+                </button>
+
+                <button
+                  onClick={handleShareDetails}
+                  id="share-details-btn"
+                  className="w-full py-3 px-6 rounded-full bg-transparent text-[#adc6ff] font-semibold text-sm hover:bg-[#adc6ff]/10 transition-all active:scale-95 flex items-center justify-center gap-2 border border-[#adc6ff]/20 cursor-pointer"
+                >
+                  <Share2 className="w-4 h-4" />
+                  <span>Share Details</span>
+                </button>
+              </div>
+            </div>
           )}
         </div>
-
-        {error && (
-          <div className="w-full p-3.5 mb-4 rounded-2xl bg-[#93000a]/40 border border-[#ffb4ab]/30 text-xs text-[#ffdad6] text-left font-mono">
-            {error}
-          </div>
-        )}
-
-        {!createdData ? (
-          /* Initial Create Space State */
-          <div id="initial-state" className="w-full flex flex-col items-center">
-            <h1 className="text-2xl font-semibold text-[#dae2fd] mb-2 tracking-tight">
-              Create Private Room
-            </h1>
-            <p className="text-sm text-[#c2c6d6] mb-8 px-2 leading-relaxed">
-              Establish a secure, ephemeral space for you and one other person.
-            </p>
-
-            <button
-              onClick={handleCreate}
-              disabled={isGenerating}
-              id="create-space-btn"
-              className="w-full py-4 rounded-full bg-[#adc6ff] text-[#002e6a] font-semibold text-base shadow-[0_8px_24px_rgba(173,198,255,0.25)] hover:bg-[#adc6ff]/90 hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Initiating...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  <span>Create Space</span>
-                </>
-              )}
-            </button>
-          </div>
-        ) : (
-          /* Created State with Link & PIN */
-          <div id="created-state" className="w-full flex flex-col items-center animate-fade-in">
-            <div className="inline-flex items-center gap-1.5 bg-[#4d8eff]/15 border border-[#4d8eff]/30 px-3.5 py-1.5 rounded-full mb-4">
-              <ShieldCheck className="w-4 h-4 text-[#adc6ff]" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-[#adc6ff]">
-                Room Established
-              </span>
-            </div>
-
-            <h2 className="text-lg font-medium text-[#dae2fd] mb-5">
-              Ready for connection.
-            </h2>
-
-            {/* Link Section */}
-            <div className="w-full bg-[#222a3d] rounded-2xl p-4 mb-3 text-left">
-              <p className="text-xs font-medium text-[#c2c6d6] mb-1.5 uppercase tracking-wider">
-                Secure Link
-              </p>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-mono text-[#dae2fd] truncate select-all">
-                  {roomUrl.replace(/^https?:\/\//, '')}
-                </span>
-                <button
-                  onClick={handleCopyLink}
-                  id="copy-created-link-btn"
-                  className="w-9 h-9 rounded-full bg-[#2d3449] flex items-center justify-center text-[#dae2fd] hover:text-[#adc6ff] hover:bg-[#4d8eff]/20 transition-colors shrink-0 cursor-pointer"
-                  title="Copy Link"
-                >
-                  {copiedLink ? <Check className="w-4 h-4 text-[#adc6ff]" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* PIN Section */}
-            <div className="w-full bg-[#222a3d] rounded-2xl p-4 mb-6 text-left">
-              <p className="text-xs font-medium text-[#c2c6d6] mb-1.5 uppercase tracking-wider">
-                Access PIN
-              </p>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-mono font-bold tracking-widest text-[#adc6ff] select-all">
-                  {createdData.pin}
-                </span>
-                <button
-                  onClick={handleCopyPin}
-                  id="copy-created-pin-btn"
-                  className="w-9 h-9 rounded-full bg-[#2d3449] flex items-center justify-center text-[#dae2fd] hover:text-[#adc6ff] hover:bg-[#4d8eff]/20 transition-colors shrink-0 cursor-pointer"
-                  title="Copy PIN"
-                >
-                  {copiedPin ? <Check className="w-4 h-4 text-[#adc6ff]" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Enter Room Button */}
-            <button
-              onClick={handleEnter}
-              id="enter-created-room-btn"
-              className="w-full py-4 rounded-full bg-[#adc6ff] text-[#002e6a] font-semibold text-base shadow-[0_8px_24px_rgba(173,198,255,0.25)] hover:bg-[#adc6ff]/90 hover:-translate-y-0.5 transition-all duration-300 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span>Enter Room</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* Notification Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-[#2d3449] text-[#dae2fd] px-5 py-2.5 rounded-full text-xs font-mono shadow-2xl z-50 flex items-center gap-2 border border-white/10 animate-fade-in">
+          <Check className="w-4 h-4 text-[#adc6ff]" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 };
