@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRight, Loader2, AlertCircle, Shield } from 'lucide-react';
 import type { RoomInfo } from '../types';
+import { apiRequest } from '../utils/api';
 
 interface JoinRoomViewProps {
   initialRoomCode?: string;
@@ -38,16 +39,15 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
     setIsCheckingRoom(true);
     setError(null);
     try {
-      const res = await fetch(`/api/rooms/${code}/info`);
-      const data = await res.json();
-      if (!res.ok || !data.exists) {
+      const data = await apiRequest(`/api/rooms/${code}/info`);
+      if (!data.exists) {
         setError(data.error || 'Room not found or expired.');
         setRoomInfo(null);
       } else {
         setRoomInfo(data.roomInfo);
       }
-    } catch {
-      setError('Unable to reach room server.');
+    } catch (err: any) {
+      setError(err.message || 'Unable to reach room server.');
     } finally {
       setIsCheckingRoom(false);
     }
@@ -98,17 +98,11 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
     setError(null);
 
     try {
-      const res = await fetch(`/api/rooms/${roomCode.trim()}/join`, {
+      const data = await apiRequest(`/api/rooms/${roomCode.trim()}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin }),
       });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to join room.');
-      }
 
       onJoined({
         roomCode: roomCode.trim(),

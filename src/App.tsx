@@ -16,6 +16,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { WebRTCCallManager } from './utils/webrtc';
 import { SoundEffects, unlockAudioContext } from './utils/audio';
 import { triggerHaptic, isMobileDevice } from './utils/helpers';
+import { apiRequest, getWebSocketUrl } from './utils/api';
 import {
   NetworkSettings,
   loadNetworkSettings,
@@ -302,8 +303,7 @@ export default function App() {
 
       setSignalingStatus(reconnectCountRef.current > 0 ? 'reconnecting' : 'connecting');
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      const wsUrl = getWebSocketUrl();
       ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 
@@ -626,7 +626,7 @@ export default function App() {
     burnOnRead?: boolean;
   }) => {
     try {
-      const res = await fetch(`/api/rooms/${roomCode}/messages`, {
+      const data = await apiRequest(`/api/rooms/${roomCode}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -634,10 +634,6 @@ export default function App() {
         },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to send message');
-      }
       if (data.success && data.message) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === data.message.id)) return prev;
@@ -651,7 +647,7 @@ export default function App() {
 
   const handleUpdateRoomTimer = async (defaultMessageExpiration: number) => {
     try {
-      const res = await fetch(`/api/rooms/${roomCode}/timer`, {
+      const data = await apiRequest(`/api/rooms/${roomCode}/timer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -659,7 +655,6 @@ export default function App() {
         },
         body: JSON.stringify({ defaultMessageExpiration }),
       });
-      const data = await res.json();
       if (data.success) {
         setRoomInfo((prev) =>
           prev
@@ -677,14 +672,13 @@ export default function App() {
 
   const handleViewMessage = async (messageId: string) => {
     try {
-      const res = await fetch(`/api/rooms/${roomCode}/messages/${messageId}/view`, {
+      const data = await apiRequest(`/api/rooms/${roomCode}/messages/${messageId}/view`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${sessionToken}`,
         },
       });
-      const data = await res.json();
       if (data.success) {
         setMessages((prev) =>
           prev.map((m) =>
@@ -717,7 +711,7 @@ export default function App() {
 
   const handleClearConversation = async () => {
     try {
-      await fetch(`/api/rooms/${roomCode}/clear`, {
+      await apiRequest(`/api/rooms/${roomCode}/clear`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -732,7 +726,7 @@ export default function App() {
 
   const handleBurnPhoto = async (messageId: string) => {
     try {
-      await fetch(`/api/rooms/${roomCode}/burn-photo`, {
+      await apiRequest(`/api/rooms/${roomCode}/burn-photo`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -752,7 +746,7 @@ export default function App() {
 
   const handleCloseRoom = async () => {
     try {
-      await fetch(`/api/rooms/${roomCode}/close`, {
+      await apiRequest(`/api/rooms/${roomCode}/close`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -769,11 +763,10 @@ export default function App() {
   // Fetch initial messages & session on entering chat
   const loadRoomSession = async (code: string, token: string) => {
     try {
-      const res = await fetch(`/api/rooms/${code}/session`, {
+      const data = await apiRequest(`/api/rooms/${code}/session`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      if (data.success) {
         setRoomInfo(data.roomInfo);
         setRole(data.role);
         setMessages(data.messages || []);

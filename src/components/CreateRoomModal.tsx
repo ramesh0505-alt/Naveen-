@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, Clock, X, Loader2, ArrowRight, Flame, Hourglass, Zap } from 'lucide-react';
+import { apiRequest } from '../utils/api';
 
 interface CreateRoomModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
     setError(null);
 
     try {
-      const res = await fetch('/api/rooms', {
+      const data = await apiRequest('/api/rooms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -38,11 +39,6 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           defaultMessageExpiration,
         }),
       });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to create room');
-      }
 
       onRoomCreated({
         roomCode: data.roomCode,
