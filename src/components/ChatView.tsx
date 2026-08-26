@@ -7,34 +7,26 @@ import {
   Lock,
   Flame,
   Check,
-  CheckCheck,
   Clock,
   MoreVertical,
-  Radio,
   Square,
   X,
-  Play,
-  Pause,
   AlertTriangle,
-  Image as ImageIcon,
   KeyRound,
   Shield,
-  Loader2,
   Hourglass,
   Zap,
   Eye,
   Sliders,
-  Download,
-  Signal,
+  User,
+  Plus,
 } from 'lucide-react';
 import type { MessageItem, MemberRole, RoomInfo, ViewMode } from '../types';
 import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { DisappearingPhotoModal } from './DisappearingPhotoModal';
-import { VoiceWaveformCanvas } from './VoiceWaveformCanvas';
-import { LiveAudioVisualizer } from './LiveAudioVisualizer';
 import { VoiceRecorder, SoundEffects } from '../utils/audio';
 import { extractWaveformData } from '../utils/waveform';
-import { formatTimeRemaining, formatMessageTime, formatDuration, copyToClipboard, triggerHaptic } from '../utils/helpers';
+import { formatTimeRemaining, formatDuration, triggerHaptic } from '../utils/helpers';
 import { QuickRepliesBar } from './QuickRepliesBar';
 import { NetworkSettings, shouldDeferMediaDownload, isLowDataActive, DEFAULT_NETWORK_SETTINGS } from '../utils/network';
 
@@ -93,31 +85,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   // Per-message custom expiration selector state
   // null = use room default; -1 = burn-on-read; >0 = seconds
-  const [messageTimerOverride, setMessageTimerOverride] = useState<number | null>(null);
-  const [showMsgTimerMenu, setShowMsgTimerMenu] = useState(false);
+  const [messageTimerOverride] = useState<number | null>(null);
 
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [voiceVolume, setVoiceVolume] = useState(0);
-  const [liveFreqData, setLiveFreqData] = useState<Uint8Array | null>(null);
   const [voicePreviewData, setVoicePreviewData] = useState<{
     blob: Blob;
     base64: string;
     duration: number;
   } | null>(null);
-  const [previewWaveform, setPreviewWaveform] = useState<number[]>([]);
-  const [previewProgress, setPreviewProgress] = useState(0);
-  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const recorderRef = useRef<VoiceRecorder | null>(null);
   const recordingTimerRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [photoViewMode, setPhotoViewMode] = useState<ViewMode>('view_once');
-  const [showPhotoModeMenu, setShowPhotoModeMenu] = useState(false);
+  const [photoViewMode] = useState<ViewMode>('view_once');
 
   // Revealed burn-on-read messages tracking
   const [revealedMessageIds, setRevealedMessageIds] = useState<Set<string>>(new Set());
@@ -137,7 +121,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   }, [messages, isOtherTyping]);
 
   // Handle typing debounce
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputText(e.target.value);
     onSendTyping(true);
 
@@ -159,293 +143,208 @@ export const ChatView: React.FC<ChatViewProps> = ({
     let burnOnRead = false;
     let burnAfterSeconds: number | undefined = undefined;
 
-    if (messageTimerOverride !== null) {
-      if (messageTimerOverride === -1) {
-        burnOnRead = true;
-        burnAfterSeconds = 10;
-      } else if (messageTimerOverride > 0) {
-        burnAfterSeconds = messageTimerOverride;
-      }
+    if (messageTimerOverride === -1) {
+      burnOnRead = true;
+      burnAfterSeconds = 10;
+    } else if (typeof messageTimerOverride === 'number' && messageTimerOverride > 0) {
+      burnAfterSeconds = messageTimerOverride;
+    } else if (roomInfo?.defaultMessageExpiration === -1) {
+      burnOnRead = true;
+      burnAfterSeconds = 10;
+    } else if (
+      typeof roomInfo?.defaultMessageExpiration === 'number' &&
+      roomInfo.defaultMessageExpiration > 0
+    ) {
+      burnAfterSeconds = roomInfo.defaultMessageExpiration;
     }
 
-    triggerHaptic('medium');
-    SoundEffects.playMessageSent();
-    await onSendMessage({
-      type: 'TEXT',
-      textContent: text,
-      burnOnRead: messageTimerOverride === -1 ? true : burnOnRead,
-      burnAfterSeconds,
-    });
-  };
-
-  const handleSendQuickReply = async (replyText: string) => {
-    const text = replyText.trim();
-    if (!text) return;
-
-    triggerHaptic('medium');
-    onSendTyping(false);
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-
-    let burnOnRead = false;
-    let burnAfterSeconds: number | undefined = undefined;
-
-    if (messageTimerOverride !== null) {
-      if (messageTimerOverride === -1) {
-        burnOnRead = true;
-        burnAfterSeconds = 10;
-      } else if (messageTimerOverride > 0) {
-        burnAfterSeconds = messageTimerOverride;
-      }
+    try {
+      await onSendMessage({
+        type: 'TEXT',
+        textContent: text,
+        burnOnRead,
+        burnAfterSeconds,
+      });
+      SoundEffects.playMessageSent();
+      triggerHaptic('light');
+    } catch {
+      triggerHaptic('warning');
     }
-
-    SoundEffects.playMessageSent();
-    await onSendMessage({
-      type: 'TEXT',
-      textContent: text,
-      burnOnRead: messageTimerOverride === -1 ? true : burnOnRead,
-      burnAfterSeconds,
-    });
   };
 
-  // Voice recorder handlers
+  // Start Voice Recording
   const startRecording = async () => {
     try {
+      triggerHaptic('medium');
       const recorder = new VoiceRecorder();
-      recorderRef.current = recorder;
-      setVoicePreviewData(null);
-      setRecordingSeconds(0);
-      setLiveFreqData(null);
+      await recorder.start();
 
-      await recorder.start((vol, freq) => {
-        setVoiceVolume(vol);
-        if (freq) setLiveFreqData(freq);
-      });
+      recorderRef.current = recorder;
       setIsRecording(true);
+      setRecordingSeconds(0);
+      setVoicePreviewData(null);
 
       recordingTimerRef.current = setInterval(() => {
-        setRecordingSeconds((s) => s + 1);
+        setRecordingSeconds((prev) => prev + 1);
       }, 1000);
-    } catch (err) {
-      alert('Microphone permission required to record voice notes.');
+
+      SoundEffects.playRecordStart();
+    } catch (err: any) {
+      alert('Microphone access is required to record voice notes: ' + err.message);
     }
   };
 
-  const stopAndPreviewRecording = async () => {
+  // Stop Recording & Preview
+  const stopRecording = async () => {
     if (!recorderRef.current) return;
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    triggerHaptic('medium');
 
     try {
-      const result = await recorderRef.current.stop();
-      setIsRecording(false);
-      setVoicePreviewData(result);
-      setPreviewProgress(0);
+      const data = await recorderRef.current.stop();
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
 
-      // Extract waveform for preview
-      extractWaveformData(result.base64, 30).then((peaks) => {
-        setPreviewWaveform(peaks);
-      });
-    } catch (err) {
       setIsRecording(false);
+      setVoicePreviewData(data);
+      SoundEffects.playRecordStop();
+    } catch {
+      setIsRecording(false);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     }
   };
 
+  // Cancel Voice Recording
   const cancelRecording = () => {
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     if (recorderRef.current) {
       recorderRef.current.cancel();
       recorderRef.current = null;
     }
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     setIsRecording(false);
     setVoicePreviewData(null);
-    setLiveFreqData(null);
-    setPreviewProgress(0);
-    if (previewAudioRef.current) {
-      previewAudioRef.current.pause();
-    }
+    triggerHaptic('light');
   };
 
-  const sendVoiceMessage = async () => {
+  // Send Recorded Voice
+  const handleSendVoice = async () => {
     if (!voicePreviewData) return;
-    SoundEffects.playMessageSent();
+    triggerHaptic('medium');
 
     let burnOnRead = false;
     let burnAfterSeconds: number | undefined = undefined;
 
-    if (messageTimerOverride !== null) {
-      if (messageTimerOverride === -1) {
-        burnOnRead = true;
-        burnAfterSeconds = 15; // 15s after listening
-      } else if (messageTimerOverride > 0) {
-        burnAfterSeconds = messageTimerOverride;
-      }
+    if (messageTimerOverride === -1) {
+      burnOnRead = true;
+      burnAfterSeconds = 10;
+    } else if (typeof messageTimerOverride === 'number' && messageTimerOverride > 0) {
+      burnAfterSeconds = messageTimerOverride;
+    } else if (roomInfo?.defaultMessageExpiration === -1) {
+      burnOnRead = true;
+      burnAfterSeconds = 10;
+    } else if (
+      typeof roomInfo?.defaultMessageExpiration === 'number' &&
+      roomInfo.defaultMessageExpiration > 0
+    ) {
+      burnAfterSeconds = roomInfo.defaultMessageExpiration;
     }
 
-    await onSendMessage({
-      type: 'VOICE',
-      mediaReference: voicePreviewData.base64,
-      duration: voicePreviewData.duration,
-      burnOnRead: messageTimerOverride === -1 ? true : burnOnRead,
-      burnAfterSeconds,
-    });
-    setVoicePreviewData(null);
-    setPreviewProgress(0);
-    if (previewAudioRef.current) {
-      previewAudioRef.current.pause();
-    }
-  };
+    try {
+      await onSendMessage({
+        type: 'VOICE',
+        mediaReference: voicePreviewData.base64,
+        duration: voicePreviewData.duration,
+        burnOnRead,
+        burnAfterSeconds,
+      });
 
-  const togglePreviewPlay = () => {
-    if (!voicePreviewData) return;
-    if (!previewAudioRef.current) {
-      const audio = new Audio(voicePreviewData.base64);
-      previewAudioRef.current = audio;
-      audio.ontimeupdate = () => {
-        if (audio.duration) {
-          setPreviewProgress(audio.currentTime / audio.duration);
-        }
-      };
-      audio.onended = () => {
-        setIsPreviewPlaying(false);
-        setPreviewProgress(0);
-      };
-    }
-
-    if (isPreviewPlaying) {
-      previewAudioRef.current.pause();
-      setIsPreviewPlaying(false);
-    } else {
-      previewAudioRef.current.play().then(() => setIsPreviewPlaying(true)).catch(() => {});
+      setVoicePreviewData(null);
+      SoundEffects.playMessageSent();
+    } catch {
+      triggerHaptic('warning');
     }
   };
 
-  const handlePreviewSeek = (percent: number) => {
-    if (previewAudioRef.current && previewAudioRef.current.duration) {
-      previewAudioRef.current.currentTime = percent * previewAudioRef.current.duration;
-      setPreviewProgress(percent);
-    }
-  };
-
-  // Image Upload handler with client-side image downscaling
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle Photo Select
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Photo must be less than 5MB.');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = async () => {
-      const rawBase64 = reader.result as string;
-      
-      const img = new Image();
-      img.onload = async () => {
-        try {
-          const maxDim = 1400;
-          let { width, height } = img;
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            const optimizedBase64 = canvas.toDataURL('image/jpeg', 0.85);
-            SoundEffects.playMessageSent();
-            await onSendMessage({
-              type: 'IMAGE',
-              mediaReference: optimizedBase64,
-              viewMode: photoViewMode,
-              burnOnRead: true,
-            });
-            setShowPhotoModeMenu(false);
-            return;
-          }
-        } catch {}
+      const base64 = reader.result as string;
 
-        SoundEffects.playMessageSent();
+      let burnAfterSeconds = 0;
+      if (photoViewMode === 'timed_5') burnAfterSeconds = 5;
+      if (photoViewMode === 'timed_10') burnAfterSeconds = 10;
+      if (photoViewMode === 'timed_30') burnAfterSeconds = 30;
+      if (photoViewMode === 'timed_60') burnAfterSeconds = 60;
+
+      try {
         await onSendMessage({
           type: 'IMAGE',
-          mediaReference: rawBase64,
+          mediaReference: base64,
           viewMode: photoViewMode,
-          burnOnRead: true,
+          burnAfterSeconds,
+          burnOnRead: photoViewMode !== 'standard',
         });
-        setShowPhotoModeMenu(false);
-      };
-      img.onerror = async () => {
         SoundEffects.playMessageSent();
-        await onSendMessage({
-          type: 'IMAGE',
-          mediaReference: rawBase64,
-          viewMode: photoViewMode,
-          burnOnRead: true,
-        });
-        setShowPhotoModeMenu(false);
-      };
-      img.src = rawBase64;
+        triggerHaptic('medium');
+      } catch {
+        triggerHaptic('warning');
+      }
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   };
 
-  // Handle reveal of burn-on-read text message
+  // Reveal a confidential burn-on-read text message
   const handleRevealMessage = (msg: MessageItem) => {
-    setRevealedMessageIds((prev) => new Set([...prev, msg.id]));
+    triggerHaptic('medium');
+    setRevealedMessageIds((prev) => new Set(prev).add(msg.id));
     if (onViewMessage) {
       onViewMessage(msg.id);
     }
   };
 
   const getExpirationBadge = (seconds?: number) => {
-    const val = seconds !== undefined ? seconds : (roomInfo.defaultMessageExpiration ?? 0);
-    if (val === 0) return { label: 'Room Expiry', short: 'Session', icon: Hourglass, color: 'text-zinc-400' };
-    if (val === -1) return { label: 'Burn on Read', short: 'Burn on Read', icon: Flame, color: 'text-amber-400' };
-    if (val === 10) return { label: '10s Expiry', short: '10s', icon: Zap, color: 'text-amber-400' };
-    if (val === 30) return { label: '30s Expiry', short: '30s', icon: Zap, color: 'text-amber-400' };
-    if (val === 60) return { label: '1m Expiry', short: '1m', icon: Zap, color: 'text-emerald-400' };
-    if (val === 300) return { label: '5m Expiry', short: '5m', icon: Clock, color: 'text-emerald-400' };
-    if (val === 3600) return { label: '1h Expiry', short: '1h', icon: Clock, color: 'text-sky-400' };
-    if (val === 86400) return { label: '24h Expiry', short: '24h', icon: Clock, color: 'text-purple-400' };
-    return { label: `${val}s Expiry`, short: `${val}s`, icon: Clock, color: 'text-zinc-400' };
+    const val = seconds !== undefined ? seconds : roomInfo?.defaultMessageExpiration ?? 0;
+    if (val === -1) return { label: 'Burn on Read', short: 'Burn', color: 'text-amber-400', icon: Flame };
+    if (val === 10) return { label: '10s', short: '10s', color: 'text-amber-400', icon: Zap };
+    if (val === 30) return { label: '30s', short: '30s', color: 'text-amber-400', icon: Zap };
+    if (val === 60) return { label: '1m', short: '1m', color: 'text-sky-400', icon: Zap };
+    if (val === 300) return { label: '5m', short: '5m', color: 'text-sky-400', icon: Clock };
+    if (val === 3600) return { label: '1h', short: '1h', color: 'text-indigo-400', icon: Clock };
+    if (val === 86400) return { label: '24h', short: '24h', color: 'text-zinc-400', icon: Clock };
+    return { label: 'Session Lifetime', short: 'Room', color: 'text-emerald-400', icon: Hourglass };
   };
 
-  const formatCountdown = (msg: MessageItem) => {
-    if (msg.isBurned) return 'Burned';
-
-    // If countdown started from viewedAt + burnAfterSeconds
-    if (msg.burnOnRead && msg.viewedAt && typeof msg.burnAfterSeconds === 'number' && msg.burnAfterSeconds > 0) {
-      const remainingMs = (msg.viewedAt + msg.burnAfterSeconds * 1000) - now;
-      if (remainingMs <= 0) return 'Burned';
-      const sec = Math.ceil(remainingMs / 1000);
-      return `${sec}s`;
-    }
-
-    // If fixed absolute expiresAt
+  const formatCountdown = (msg: MessageItem): string | null => {
     if (msg.expiresAt) {
-      const diffMs = msg.expiresAt - now;
-      if (diffMs <= 0) return 'Burned';
-      const sec = Math.ceil(diffMs / 1000);
-      if (sec < 60) return `${sec}s`;
-      if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`;
-      const hours = Math.floor(sec / 3600);
-      const mins = Math.floor((sec % 3600) / 60);
-      return `${hours}h ${mins}m`;
+      const remainingMs = msg.expiresAt - now;
+      if (remainingMs <= 0) return 'Burned';
+      const secs = Math.ceil(remainingMs / 1000);
+      if (secs < 60) return `${secs}s`;
+      const mins = Math.floor(secs / 60);
+      if (mins < 60) return `${mins}m`;
+      return `${Math.floor(mins / 60)}h`;
     }
 
-    // Fallback: regular timer message without burnOnRead
-    if (!msg.burnOnRead && typeof msg.burnAfterSeconds === 'number' && msg.burnAfterSeconds > 0) {
-      const remainingMs = (msg.createdAt + msg.burnAfterSeconds * 1000) - now;
-      if (remainingMs <= 0) return 'Burned';
-      const sec = Math.ceil(remainingMs / 1000);
-      if (sec < 60) return `${sec}s`;
-      if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`;
-      const hours = Math.floor(sec / 3600);
-      const mins = Math.floor((sec % 3600) / 60);
-      return `${hours}h ${mins}m`;
+    if (msg.burnOnRead) {
+      if (!msg.viewedAt) return 'Burn on Read';
+      const durationSecs = msg.burnAfterSeconds ?? 10;
+      const elapsed = Math.floor((now - msg.viewedAt) / 1000);
+      const left = Math.max(0, durationSecs - elapsed);
+      return left > 0 ? `${left}s` : 'Burned';
+    }
+
+    if (typeof msg.burnAfterSeconds === 'number' && msg.burnAfterSeconds > 0) {
+      const elapsed = Math.floor((now - msg.createdAt) / 1000);
+      const left = Math.max(0, msg.burnAfterSeconds - elapsed);
+      return left > 0 ? `${left}s` : 'Burned';
     }
 
     return null;
@@ -466,75 +365,57 @@ export const ChatView: React.FC<ChatViewProps> = ({
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto w-full bg-white dark:bg-zinc-950 border-x border-zinc-200 dark:border-zinc-800 shadow-sm relative">
-      {/* Header */}
-      <div className="h-16 px-4 sm:px-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-white/95 dark:bg-zinc-900/95 backdrop-blur z-20">
+    <div className="flex flex-col w-full h-[calc(100vh-4rem)] max-w-4xl mx-auto bg-[#0b1326] text-[#dae2fd] font-sans relative overflow-hidden pb-[76px]">
+      {/* Chat Header */}
+      <div className="px-4 py-2.5 flex items-center justify-between border-b border-[#222a3d] bg-[#0b1326]/90 backdrop-blur-md sticky top-0 z-40">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center font-bold text-sm">
-              {role === 'owner' ? 'OP' : 'GP'}
-            </div>
-            <span
-              className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-zinc-900 ${
-                otherUserOnline ? 'bg-emerald-500' : 'bg-zinc-400'
-              }`}
-            />
+          <div className="w-10 h-10 rounded-full bg-[#171f33] border border-white/5 flex items-center justify-center text-[#adc6ff]">
+            <Lock className="w-5 h-5" />
           </div>
-
-          <div>
-            <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <span>{role === 'owner' ? 'Room Owner' : 'Room Guest'}</span>
-              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">
-                #{roomCode}
+          <div className="flex flex-col">
+            <span className="text-base sm:text-lg font-semibold text-[#dae2fd]">
+              Private Room
+            </span>
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  otherUserOnline
+                    ? 'bg-[#adc6ff] shadow-[0_0_8px_rgba(173,198,255,0.8)] animate-pulse'
+                    : 'bg-[#8c909f]'
+                }`}
+              ></span>
+              <span className="text-xs font-mono text-[#c2c6d6]">
+                {otherUserOnline ? 'Connected' : 'Waiting for peer...'}
               </span>
             </div>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  otherUserOnline ? 'bg-emerald-500' : 'bg-zinc-400'
-                }`}
-              />
-              {otherUserOnline
-                ? `${role === 'owner' ? 'Guest' : 'Owner'} is online`
-                : 'Waiting for peer...'}
-            </p>
           </div>
         </div>
 
-        {/* Header Actions */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Configurable Message Expiration Pill / Trigger */}
+        {/* Right Header Actions */}
+        <div className="flex items-center gap-2">
+          {/* Quick Timer Pill */}
           <button
             type="button"
             onClick={() => setShowTimerModal(true)}
             id="room-timer-settings-btn"
-            className="flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700/60 bg-zinc-100 dark:bg-zinc-800 hover:border-emerald-500/50 hover:bg-zinc-200/70 dark:hover:bg-zinc-700/60 transition-all cursor-pointer shadow-xs"
+            className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-full border border-white/10 bg-[#171f33] text-[#dae2fd] hover:bg-[#222a3d] transition-colors cursor-pointer"
             title="Configure Disappearing Messages Timer"
           >
             <RoomExpIcon className={`w-3.5 h-3.5 ${roomExpirationBadge.color}`} />
-            <span className="font-semibold text-zinc-800 dark:text-zinc-200 hidden sm:inline">
-              {roomExpirationBadge.label}
-            </span>
-            <span className="font-semibold text-zinc-800 dark:text-zinc-200 sm:hidden">
-              {roomExpirationBadge.short}
-            </span>
+            <span>{roomExpirationBadge.short}</span>
           </button>
 
-          {/* Room Lifetime countdown */}
-          <div className="hidden md:flex items-center gap-1 text-[11px] font-mono text-zinc-500 dark:text-zinc-400 bg-zinc-50 dark:bg-zinc-800/40 px-2 py-1.5 rounded-lg border border-zinc-200/60 dark:border-zinc-800">
-            <Clock className="w-3 h-3 text-zinc-400" />
-            <span>{formatTimeRemaining(roomInfo.expiresAt)} left</span>
-          </div>
-
-          {/* Start Audio Call button */}
+          {/* Start Audio Call Button */}
           <button
-            onClick={onStartCall}
+            onClick={() => {
+              triggerHaptic('medium');
+              onStartCall();
+            }}
             id="start-call-btn"
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-            title="Start Live Audio Call"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#171f33] hover:bg-[#222a3d] transition-colors text-[#adc6ff] cursor-pointer"
+            title="Start Audio Call"
           >
-            <Phone className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Audio Call</span>
+            <Phone className="w-5 h-5" />
           </button>
 
           {/* More Menu Toggle */}
@@ -542,22 +423,22 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <button
               onClick={() => setShowMenu(!showMenu)}
               id="room-menu-btn"
-              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#171f33] text-[#c2c6d6] hover:text-[#dae2fd] transition-colors cursor-pointer"
             >
               <MoreVertical className="w-5 h-5" />
             </button>
 
             {/* Dropdown Menu */}
             {showMenu && (
-              <div className="absolute right-0 top-12 w-60 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl py-1.5 z-30 animate-scale-up">
+              <div className="absolute right-0 top-12 w-64 rounded-2xl bg-[#171f33] border border-white/10 shadow-2xl py-2 z-50 animate-scale-up font-sans">
                 <button
                   onClick={() => {
                     setShowTimerModal(true);
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2.5 cursor-pointer"
+                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#dae2fd] hover:bg-[#222a3d] flex items-center gap-2.5 cursor-pointer"
                 >
-                  <Flame className="w-4 h-4 text-amber-500" />
+                  <Flame className="w-4 h-4 text-[#ffb786]" />
                   <span>Disappearing Messages Timer</span>
                 </button>
 
@@ -567,13 +448,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       setShowMenu(false);
                       onOpenSettings();
                     }}
-                    className="w-full px-4 py-2.5 text-xs text-left font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2.5 cursor-pointer"
+                    className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#dae2fd] hover:bg-[#222a3d] flex items-center gap-2.5 cursor-pointer"
                   >
-                    <Sliders className="w-4 h-4 text-sky-400" />
+                    <Sliders className="w-4 h-4 text-[#adc6ff]" />
                     <div className="flex items-center justify-between flex-1">
                       <span>Connection & Low Data Mode</span>
                       {isLowDataActive(networkSettings) && (
-                        <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-mono">
+                        <span className="text-[10px] bg-[#df7412]/30 text-[#ffb786] px-1.5 py-0.5 rounded font-mono">
                           Active
                         </span>
                       )}
@@ -586,9 +467,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     setShowCredsModal(true);
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2.5 cursor-pointer"
+                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#dae2fd] hover:bg-[#222a3d] flex items-center gap-2.5 cursor-pointer"
                 >
-                  <KeyRound className="w-4 h-4 text-zinc-400" />
+                  <KeyRound className="w-4 h-4 text-[#c2c6d6]" />
                   <span>Room Credentials & PIN</span>
                 </button>
 
@@ -599,13 +480,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       onClearConversation();
                     }
                   }}
-                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 flex items-center gap-2.5 cursor-pointer"
+                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#ffb786] hover:bg-[#222a3d] flex items-center gap-2.5 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                   <span>Clear Conversation (Both)</span>
                 </button>
 
-                <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-1" />
+                <div className="h-px bg-white/5 my-1" />
 
                 <button
                   onClick={() => {
@@ -614,7 +495,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       onCloseRoom();
                     }
                   }}
-                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-2.5 cursor-pointer"
+                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#ffb4ab] hover:bg-[#93000a]/20 flex items-center gap-2.5 cursor-pointer"
                 >
                   <AlertTriangle className="w-4 h-4" />
                   <span>Close & Burn Room</span>
@@ -625,23 +506,26 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       </div>
 
-      {/* Messages List Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+      {/* Message List */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 relative z-10" id="chat-messages">
+        {/* Time Scrim Badge */}
+        <div className="flex justify-center my-1">
+          <span className="px-3 py-1 rounded-full bg-[#222a3d]/60 text-[#c2c6d6] font-mono text-[11px] backdrop-blur-sm">
+            {formatTimeRemaining(roomInfo.expiresAt)} Left in Room
+          </span>
+        </div>
+
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center text-zinc-400 px-4 py-16">
-            <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-3 shadow-inner">
-              <Lock className="w-6 h-6 text-zinc-400" />
+          <div className="h-full flex flex-col items-center justify-center text-center text-[#8c909f] px-4 py-16">
+            <div className="w-14 h-14 rounded-full bg-[#171f33] border border-white/5 flex items-center justify-center mb-3 shadow-inner">
+              <Lock className="w-7 h-7 text-[#adc6ff]" />
             </div>
-            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
-              End-to-End Ephemeral Space
+            <p className="text-base font-semibold text-[#dae2fd] mb-1">
+              End-to-End Ephemeral Sanctuary
             </p>
-            <p className="text-xs text-zinc-500 max-w-xs leading-relaxed">
-              Messages and voice notes sent here are temporary and will never be permanently stored.
+            <p className="text-xs text-[#c2c6d6] max-w-xs leading-relaxed">
+              Messages and voice notes exchanged here are temporary and will never be permanently retained.
             </p>
-            <div className="mt-4 px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/50 text-[11px] font-mono text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
-              <RoomExpIcon className={`w-3.5 h-3.5 ${roomExpirationBadge.color}`} />
-              <span>Disappearing mode: <strong>{roomExpirationBadge.label}</strong></span>
-            </div>
           </div>
         ) : (
           messages.map((msg) => {
@@ -674,73 +558,65 @@ export const ChatView: React.FC<ChatViewProps> = ({
             return (
               <div
                 key={msg.id}
-                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in`}
+                className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-fade-in group`}
               >
-                <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 mb-1 px-1 font-mono">
-                  <span>{isMe ? 'You' : msg.senderRole === 'owner' ? 'Owner' : 'Guest'}</span>
-                  {msg.burnOnRead && (
-                    <span className="text-amber-500 font-semibold flex items-center gap-0.5">
-                      <Flame className="w-2.5 h-2.5" />
-                      <span>Burn-on-Read</span>
-                    </span>
-                  )}
-                  {msg.burnAfterSeconds && !msg.burnOnRead && (
-                    <span className="text-emerald-500 font-semibold flex items-center gap-0.5">
-                      <Clock className="w-2.5 h-2.5" />
-                      <span>{msg.burnAfterSeconds >= 3600 ? `${msg.burnAfterSeconds / 3600}h` : `${msg.burnAfterSeconds}s`}</span>
-                    </span>
-                  )}
-                </div>
-
-                {/* Burned Message Pill */}
+                {/* Burned Message Bubble */}
                 {isEffectivelyBurned ? (
-                  <div className="p-3 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center gap-2 text-xs text-zinc-500 font-mono shadow-xs">
-                    <Flame className="w-4 h-4 text-amber-500/80 animate-pulse" />
-                    <span>Message burned and erased</span>
+                  <div className="p-3 rounded-2xl bg-[#171f33] border border-white/5 flex items-center gap-2 text-xs text-[#8c909f] font-mono shadow-md">
+                    <Flame className="w-4 h-4 text-[#ffb786] animate-pulse" />
+                    <span>Message burned and wiped</span>
                   </div>
                 ) : (
                   <>
                     {/* TEXT MESSAGE */}
                     {msg.type === 'TEXT' && (
-                      <div>
+                      <div className="flex items-end gap-2 max-w-[85%] sm:max-w-[75%]">
+                        {!isMe && (
+                          <div className="w-8 h-8 rounded-full bg-[#222a3d] flex-shrink-0 flex items-center justify-center shadow-md text-[#c2c6d6]">
+                            <User className="w-4 h-4" />
+                          </div>
+                        )}
+
                         {isBurnOnReadLocked ? (
                           <button
                             type="button"
                             onClick={() => handleRevealMessage(msg)}
-                            className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/40 to-zinc-900 border border-amber-800/60 hover:border-amber-500 text-left transition-all cursor-pointer group shadow-md"
+                            className="p-3.5 rounded-2xl bg-gradient-to-r from-[#461f00]/60 to-[#171f33] border border-[#df7412]/50 hover:border-[#ffb786] text-left transition-all cursor-pointer group shadow-md"
                           >
-                            <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold mb-1">
+                            <div className="flex items-center gap-2 text-[#ffb786] text-xs font-semibold mb-1">
                               <Lock className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                               <span>Confidential Message</span>
                             </div>
-                            <div className="text-[11px] text-zinc-300 font-light flex items-center gap-1.5">
-                              <Eye className="w-3 h-3 text-amber-400" />
-                              <span>Tap to reveal & start self-destruct timer</span>
+                            <div className="text-[11px] text-[#c2c6d6] flex items-center gap-1.5">
+                              <Eye className="w-3 h-3 text-[#ffb786]" />
+                              <span>Tap to reveal & start self-destruct</span>
                             </div>
                           </button>
                         ) : (
-                          <div className="relative group">
-                            <div
-                              className={`px-4 py-2.5 rounded-2xl max-w-[85%] sm:max-w-md text-sm leading-relaxed break-words shadow-sm ${
-                                isMe
-                                  ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-tr-xs'
-                                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-tl-xs'
-                              } ${msg.burnOnRead ? 'border border-amber-500/40' : ''}`}
-                            >
+                          <div
+                            className={`p-4 shadow-md transition-transform active:scale-[0.98] ${
+                              isMe
+                                ? 'rounded-2xl rounded-tr-sm bg-[#adc6ff] text-[#002e6a] shadow-[0_8px_24px_rgba(173,198,255,0.15)]'
+                                : 'rounded-2xl rounded-tl-sm bg-[#31394d] text-[#dae2fd]'
+                            }`}
+                          >
+                            <p className="text-base leading-relaxed break-words font-normal">
                               {msg.textContent}
+                            </p>
 
-                              {/* Active Countdown Bar / Badge for burning message */}
-                              {countdownStr && (
-                                <div className={`flex items-center justify-end gap-1 mt-1.5 pt-1 border-t text-[10px] font-mono font-bold ${
+                            {/* Active Countdown for burning message */}
+                            {countdownStr && (
+                              <div
+                                className={`flex items-center justify-end gap-1 mt-1.5 pt-1 border-t text-[10px] font-mono font-bold ${
                                   isMe
-                                    ? 'border-zinc-800 dark:border-zinc-200 text-amber-400 dark:text-amber-600'
-                                    : 'border-zinc-200 dark:border-zinc-700 text-amber-500'
-                                }`}>
-                                  <Flame className="w-3 h-3 animate-pulse" />
-                                  <span>{countdownStr}</span>
-                                </div>
-                              )}
-                            </div>
+                                    ? 'border-[#002e6a]/20 text-[#002e6a]'
+                                    : 'border-white/10 text-[#ffb786]'
+                                }`}
+                              >
+                                <Flame className="w-3 h-3 animate-pulse" />
+                                <span>{countdownStr}</span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -748,75 +624,59 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
                     {/* VOICE MESSAGE */}
                     {msg.type === 'VOICE' && (
-                      <div className="relative">
-                        <VoiceMessagePlayer
-                          audioSrc={msg.mediaReference}
-                          duration={msg.duration}
-                          isMe={isMe}
-                          burnOnRead={msg.burnOnRead}
-                          deferAutoDownload={shouldDeferMediaDownload('voice', networkSettings) && !isMe}
-                          onPlay={() => {
-                            if (!isMe && msg.burnOnRead && onViewMessage) {
-                              onViewMessage(msg.id);
-                            }
-                          }}
-                        />
-                        {countdownStr && (
-                          <div className="absolute -bottom-5 right-1 flex items-center gap-1 text-[10px] font-mono text-amber-500 font-bold">
-                            <Flame className="w-3 h-3 animate-pulse" />
-                            <span>{countdownStr}</span>
+                      <div className="flex items-end gap-2 max-w-[88%] sm:max-w-[80%]">
+                        {!isMe && (
+                          <div className="w-8 h-8 rounded-full bg-[#222a3d] flex-shrink-0 flex items-center justify-center shadow-md text-[#c2c6d6]">
+                            <User className="w-4 h-4" />
                           </div>
                         )}
+                        <div className="flex flex-col">
+                          <VoiceMessagePlayer
+                            audioSrc={msg.mediaReference}
+                            duration={msg.duration}
+                            isMe={isMe}
+                            burnOnRead={msg.burnOnRead}
+                            deferAutoDownload={shouldDeferMediaDownload('voice', networkSettings) && !isMe}
+                            onPlay={() => {
+                              if (!isMe && msg.burnOnRead && onViewMessage) {
+                                onViewMessage(msg.id);
+                              }
+                            }}
+                          />
+                          {countdownStr && (
+                            <div className="flex items-center gap-1 text-[10px] font-mono text-[#ffb786] font-bold mt-1 px-1">
+                              <Flame className="w-3 h-3 animate-pulse" />
+                              <span>{countdownStr}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
                     {/* IMAGE MESSAGE */}
                     {msg.type === 'IMAGE' && (
-                      <div>
-                        <button
-                          onClick={() => setSelectedPhoto(msg)}
-                          className={`p-3 rounded-2xl text-white border transition-all flex items-center gap-3 cursor-pointer shadow-md group text-left ${
-                            shouldDeferMediaDownload('image', networkSettings) && !isMe
-                              ? 'bg-zinc-950 border-amber-800/60 hover:border-amber-500'
-                              : 'bg-zinc-900 border-zinc-800 hover:border-amber-500/60'
-                          }`}
-                        >
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
-                            shouldDeferMediaDownload('image', networkSettings) && !isMe
-                              ? 'bg-amber-950/60 text-amber-400 border border-amber-800/60'
-                              : 'bg-zinc-800 text-amber-400'
-                          }`}>
-                            {shouldDeferMediaDownload('image', networkSettings) && !isMe ? (
-                              <Download className="w-5 h-5 animate-pulse" />
-                            ) : (
-                              <Flame className="w-5 h-5" />
-                            )}
+                      <div className="flex items-end gap-2 max-w-[85%] sm:max-w-[70%]">
+                        {!isMe && (
+                          <div className="w-8 h-8 rounded-full bg-[#222a3d] flex-shrink-0 flex items-center justify-center shadow-md text-[#c2c6d6]">
+                            <User className="w-4 h-4" />
                           </div>
-                          <div>
-                            <div className="text-xs font-bold text-zinc-100 flex items-center gap-1.5">
-                              <span>Disappearing Photo</span>
-                              {countdownStr && (
-                                <span className="text-[10px] font-mono text-amber-400 bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/60">
-                                  {countdownStr}
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1">
-                              {shouldDeferMediaDownload('image', networkSettings) && !isMe ? (
-                                <span className="text-amber-400 font-semibold">
-                                  Low Data • Tap to Download (~15 kB)
-                                </span>
-                              ) : (
-                                <span>
-                                  {msg.viewMode === 'timed_5'
-                                    ? '5s timer'
-                                    : msg.viewMode === 'timed_10'
-                                    ? '10s timer'
-                                    : msg.viewMode === 'timed_30'
-                                    ? '30s timer'
-                                    : 'Tap to view once'}
-                                </span>
-                              )}
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPhoto(msg)}
+                          className="p-2 rounded-2xl bg-[#171f33] border border-white/10 hover:border-[#adc6ff] transition-all cursor-pointer text-left shadow-md group"
+                        >
+                          <div className="relative rounded-xl overflow-hidden max-h-48 bg-black/40">
+                            <img
+                              src={msg.mediaReference}
+                              alt="Ephemeral Media"
+                              className="w-full h-auto object-cover blur-sm group-hover:blur-0 transition-all"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-xs">
+                              <span className="px-3 py-1.5 rounded-full bg-[#0b1326]/80 border border-white/10 text-xs font-mono text-[#dae2fd] flex items-center gap-1.5">
+                                <Eye className="w-3.5 h-3.5 text-[#adc6ff]" />
+                                <span>Tap to view photo</span>
+                              </span>
                             </div>
                           </div>
                         </button>
@@ -824,299 +684,165 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     )}
                   </>
                 )}
-
-                {/* Timestamp & Delivery status */}
-                <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 px-1 font-mono select-none">
-                  <span title={new Date(msg.createdAt).toLocaleString()}>{formatMessageTime(msg.createdAt)}</span>
-                  {isMe && (
-                    <span>
-                      {msg.delivered ? (
-                        <CheckCheck className="w-3.5 h-3.5 text-emerald-500 inline ml-0.5" title="Delivered" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5 text-zinc-400 inline ml-0.5" title="Sent" />
-                      )}
-                    </span>
-                  )}
-                </div>
               </div>
             );
           })
         )}
 
-        {/* Real-time typing indicator */}
+        {/* Typing Indicator */}
         {isOtherTyping && (
-          <div className="flex items-center gap-2 text-xs text-zinc-400 pl-2 animate-pulse">
-            <div className="flex gap-1 items-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce"></span>
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0.2s]"></span>
-              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400 animate-bounce [animation-delay:0.4s]"></span>
+          <div className="flex justify-start mt-2">
+            <div className="flex items-end gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#222a3d] flex-shrink-0 flex items-center justify-center shadow-md">
+                <User className="w-4 h-4 text-[#c2c6d6]" />
+              </div>
+              <div className="rounded-2xl rounded-tl-sm bg-[#31394d] px-4 py-3 shadow-md flex items-center gap-1.5 h-11">
+                <div
+                  className="w-2 h-2 rounded-full bg-[#c2c6d6] animate-[bounce_1.4s_infinite_ease-in-out_both]"
+                  style={{ animationDelay: '-0.32s' }}
+                ></div>
+                <div
+                  className="w-2 h-2 rounded-full bg-[#c2c6d6] animate-[bounce_1.4s_infinite_ease-in-out_both]"
+                  style={{ animationDelay: '-0.16s' }}
+                ></div>
+                <div className="w-2 h-2 rounded-full bg-[#c2c6d6] animate-[bounce_1.4s_infinite_ease-in-out_both]"></div>
+              </div>
             </div>
-            <span className="text-[11px]">Peer is typing...</span>
           </div>
         )}
 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Voice Recorder Overlay / Controls */}
-      {isRecording && (
-        <div className="p-3 bg-[#1A1111] border-t border-red-900/60 flex items-center justify-between gap-3 animate-fade-in text-[#F0F0F0]">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping flex-shrink-0" />
-            <span className="text-xs font-mono font-medium text-red-400 flex-shrink-0">
-              REC: {formatDuration(recordingSeconds)}
-            </span>
-            <div className="flex-1 max-w-xs h-6 px-2">
-              <LiveAudioVisualizer
-                freqData={liveFreqData}
-                volume={voiceVolume}
-                barCount={28}
-                height={22}
-              />
-            </div>
-          </div>
+      {/* Hidden file input for photos */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePhotoSelect}
+      />
 
-          <div className="flex items-center gap-2 flex-shrink-0 font-mono">
+      {/* Quick Replies Bar */}
+      <div className="px-4 pt-1">
+        <QuickRepliesBar onSelectQuickReply={(reply) => setInputText(reply)} />
+      </div>
+
+      {/* Voice Recording Active HUD */}
+      {isRecording && (
+        <div className="px-4 py-2 bg-[#171f33]/90 border-t border-white/10 flex items-center justify-between z-40">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-[#ffb4ab] animate-ping" />
+            <span className="font-mono text-sm text-[#ffb4ab]">
+              Recording {formatDuration(recordingSeconds)}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={cancelRecording}
-              className="px-3 py-1.5 border border-[#333] hover:border-[#555] bg-[#141414] text-[11px] uppercase tracking-wider text-[#999] hover:text-white transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-full bg-[#222a3d] text-xs text-[#ffb4ab] hover:bg-[#93000a]/30 cursor-pointer"
             >
               Cancel
             </button>
             <button
-              onClick={stopAndPreviewRecording}
-              className="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white text-[11px] uppercase tracking-wider font-bold transition-all cursor-pointer flex items-center gap-1.5"
+              type="button"
+              onClick={stopRecording}
+              className="px-4 py-1.5 rounded-full bg-[#adc6ff] text-[#002e6a] text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
             >
-              <Square className="w-3 h-3 fill-current" />
-              <span>Done</span>
+              <Square className="w-3.5 h-3.5 fill-current" />
+              <span>Finish</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Voice Preview Overlay (Before Send) */}
+      {/* Voice Preview HUD */}
       {voicePreviewData && (
-        <div className="p-3 bg-[#141414] border-t border-[#2A2A2A] flex items-center justify-between gap-4 animate-fade-in text-[#F0F0F0]">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <button
-              onClick={togglePreviewPlay}
-              className="w-8 h-8 bg-white text-black hover:bg-[#D1D1D1] flex items-center justify-center transition-colors flex-shrink-0 cursor-pointer"
-              title={isPreviewPlaying ? 'Pause preview' : 'Play preview'}
-            >
-              {isPreviewPlaying ? (
-                <Pause className="w-4 h-4 fill-current" />
-              ) : (
-                <Play className="w-4 h-4 fill-current ml-0.5" />
-              )}
-            </button>
-
-            <div className="flex-1 max-w-md min-w-0">
-              <VoiceWaveformCanvas
-                waveform={previewWaveform}
-                progress={previewProgress}
-                isPlaying={isPreviewPlaying}
-                isMe={false}
-                onSeek={handlePreviewSeek}
-                height={26}
-              />
-            </div>
-
-            <span className="text-[11px] font-mono text-[#888] flex-shrink-0 hidden sm:inline">
-              {formatDuration(voicePreviewData.duration)}
+        <div className="px-4 py-3 bg-[#171f33] border-t border-white/10 flex items-center justify-between z-40">
+          <div className="flex items-center gap-2 flex-1 mr-3">
+            <Mic className="w-4 h-4 text-[#adc6ff]" />
+            <span className="text-xs font-mono text-[#dae2fd]">
+              Voice Note Ready ({formatDuration(voicePreviewData.duration)})
             </span>
           </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0 font-mono">
+          <div className="flex items-center gap-2">
             <button
-              onClick={cancelRecording}
-              className="p-2 border border-[#2A2A2A] hover:border-[#444] text-[#888] hover:text-white transition-colors cursor-pointer"
-              title="Discard"
+              type="button"
+              onClick={() => setVoicePreviewData(null)}
+              className="px-3 py-1.5 rounded-full bg-[#222a3d] text-xs text-[#c2c6d6] hover:text-white cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
+              Discard
             </button>
             <button
-              onClick={sendVoiceMessage}
-              className="px-4 py-2 bg-white text-black hover:bg-[#D1D1D1] text-[11px] uppercase tracking-wider font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              type="button"
+              onClick={handleSendVoice}
+              className="px-4 py-1.5 rounded-full bg-[#adc6ff] text-[#002e6a] text-xs font-semibold flex items-center gap-1 cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>Send</span>
+              <span>Send Voice</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Composer Input Bar */}
-      <div className="border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 relative">
-        {/* Configurable Quick Replies Row */}
-        <QuickRepliesBar
-          onSendQuickReply={handleSendQuickReply}
-          disabled={isRecording}
-        />
+      {/* Chat Composer Bar (Design Matching Specifications) */}
+      <div className="w-full px-4 py-3 bg-[#0b1326]/90 backdrop-blur-xl z-40 border-t border-white/5">
+        <form onSubmit={handleSendText} className="flex items-end gap-2 max-w-4xl mx-auto">
+          {/* Plus / Media Menu Button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            id="chat-attach-btn"
+            className="w-12 h-12 rounded-full bg-[#222a3d] flex items-center justify-center flex-shrink-0 hover:bg-[#31394d] transition-colors text-[#dae2fd] shadow-sm cursor-pointer"
+            title="Attach Ephemeral Photo"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
 
-        <div className="p-3 sm:p-4">
-          <form onSubmit={handleSendText} className="flex items-center gap-2">
-          {/* Photo attachment with view mode selector */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowPhotoModeMenu(!showPhotoModeMenu)}
-              id="attach-photo-btn"
-              className="p-2.5 rounded-xl text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-              title="Attach Disappearing Photo"
-            >
-              <Flame className="w-5 h-5 text-amber-500" />
-            </button>
+          {/* Textarea Composer Container */}
+          <div className="flex-1 bg-[#2d3449] rounded-3xl min-h-[48px] flex items-center px-4 py-1 shadow-inner relative focus-within:ring-2 focus-within:ring-[#adc6ff]/50 transition-all">
+            <textarea
+              value={inputText}
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendText();
+                }
+              }}
+              placeholder="Type a message..."
+              rows={1}
+              id="chat-textarea-input"
+              className="w-full bg-transparent text-[#dae2fd] text-base placeholder-[#c2c6d6] outline-none resize-none max-h-32 py-3"
+              style={{ minHeight: '48px' }}
+            />
 
-            {/* Photo mode popup */}
-            {showPhotoModeMenu && (
-              <div className="absolute bottom-12 left-0 w-56 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-2 z-30 space-y-1 animate-scale-up">
-                <div className="text-[10px] uppercase font-bold text-zinc-400 px-2.5 py-1 font-mono">
-                  Disappearing Photo Mode
-                </div>
-                {(
-                  [
-                    { mode: 'view_once', label: '👁️ View Once (Immediate Burn)' },
-                    { mode: 'timed_5', label: '⏱️ 5s Auto-Destruct' },
-                    { mode: 'timed_10', label: '⏳ 10s Auto-Destruct' },
-                    { mode: 'timed_30', label: '⏳ 30s Auto-Destruct' },
-                  ] as { mode: ViewMode; label: string }[]
-                ).map(({ mode, label }) => (
-                  <label
-                    key={mode}
-                    className="flex items-center justify-between px-3 py-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer"
-                  >
-                    <span>{label}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        setPhotoViewMode(mode);
-                        handlePhotoUpload(e);
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
+            {/* Mic button embedded in composer */}
+            {!inputText.trim() && (
+              <button
+                type="button"
+                onClick={startRecording}
+                id="mic-record-btn"
+                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[#c2c6d6] hover:text-[#adc6ff] transition-colors absolute right-2 bottom-2 cursor-pointer"
+                title="Record Voice Note"
+              >
+                <Mic className="w-5 h-5" />
+              </button>
             )}
           </div>
-
-          {/* Per-message custom expiration quick toggle */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowMsgTimerMenu(!showMsgTimerMenu)}
-              id="message-timer-selector-btn"
-              className={`p-2.5 rounded-xl transition-all cursor-pointer ${
-                messageTimerOverride !== null
-                  ? 'bg-amber-500/20 text-amber-500 border border-amber-500/40'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-              }`}
-              title={
-                messageTimerOverride === null
-                  ? 'Custom Expiration for this message'
-                  : `Custom Timer: ${getExpirationBadge(messageTimerOverride).label}`
-              }
-            >
-              <Clock className="w-5 h-5" />
-            </button>
-
-            {/* Message timer popup menu */}
-            {showMsgTimerMenu && (
-              <div className="absolute bottom-12 left-0 w-64 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl p-2 z-30 space-y-1 animate-scale-up">
-                <div className="text-[10px] uppercase font-bold text-zinc-400 px-2.5 py-1 font-mono">
-                  Message Expiration Override
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMessageTimerOverride(null);
-                    setShowMsgTimerMenu(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left cursor-pointer transition-colors ${
-                    messageTimerOverride === null
-                      ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold'
-                      : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Hourglass className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Use Room Default ({roomExpirationBadge.label})</span>
-                  </span>
-                  {messageTimerOverride === null && <Check className="w-3.5 h-3.5 text-emerald-500" />}
-                </button>
-
-                {timerOptions.map((opt) => {
-                  const Icon = opt.icon;
-                  const isSelected = messageTimerOverride === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        setMessageTimerOverride(opt.value);
-                        setShowMsgTimerMenu(false);
-                      }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs text-left cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border border-amber-500/30'
-                          : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800/60'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon className="w-3.5 h-3.5 text-amber-500" />
-                        <span>{opt.label}</span>
-                      </span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-amber-500" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Text Input */}
-          <input
-            type="text"
-            value={inputText}
-            onChange={handleInputChange}
-            placeholder={
-              messageTimerOverride === -1
-                ? 'Type burn-on-read message...'
-                : messageTimerOverride
-                ? `Type message (${getExpirationBadge(messageTimerOverride).label})...`
-                : 'Type a private message...'
-            }
-            id="chat-text-input"
-            className="flex-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-
-          {/* Voice Record trigger */}
-          {!inputText.trim() && !isRecording && (
-            <button
-              type="button"
-              onClick={startRecording}
-              id="start-voice-record-btn"
-              className="p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
-              title="Record Voice Message"
-            >
-              <Mic className="w-5 h-5 text-emerald-500" />
-            </button>
-          )}
 
           {/* Send Button */}
-          {inputText.trim() && (
-            <button
-              type="submit"
-              id="send-message-btn"
-              className="p-2.5 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-white/90 active:scale-95 shadow-sm transition-all cursor-pointer"
-              title="Send Message"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          )}
+          <button
+            type="submit"
+            disabled={!inputText.trim()}
+            id="send-chat-btn"
+            className="w-12 h-12 rounded-full bg-[#adc6ff] flex items-center justify-center flex-shrink-0 hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-[#adc6ff]/20 text-[#002e6a] cursor-pointer disabled:opacity-40"
+            title="Send Message"
+          >
+            <Send className="w-5 h-5" />
+          </button>
         </form>
-        </div>
       </div>
 
       {/* Disappearing Photo Modal */}
@@ -1130,66 +856,59 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* Room Message Expiration Timer Modal */}
       {showTimerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in font-sans">
-          <div className="w-full max-w-md bg-[#141414] border border-[#2A2A2A] shadow-2xl p-6 text-[#F0F0F0] rounded-3xl animate-scale-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b1326]/85 backdrop-blur-sm animate-fade-in font-sans">
+          <div className="w-full max-w-md bg-[#131b2e] border border-white/10 shadow-2xl p-6 text-[#dae2fd] rounded-3xl animate-scale-up">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                <div className="p-2 rounded-full bg-[#df7412]/20 text-[#ffb786]">
                   <Flame className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Disappearing Messages Timer</h3>
-                  <p className="text-[11px] text-zinc-400 font-mono">Synchronized across both users in real-time</p>
+                  <h3 className="text-base font-bold text-[#dae2fd]">Disappearing Messages Timer</h3>
+                  <p className="text-xs text-[#c2c6d6] font-mono">Synchronized across both users</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowTimerModal(false)}
-                className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#222a3d] transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-2 my-5">
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
               {timerOptions.map((opt) => {
-                const IconComponent = opt.icon;
-                const isSelected = (roomInfo.defaultMessageExpiration ?? 0) === opt.value;
+                const Icon = opt.icon;
+                const isSelected = (roomInfo?.defaultMessageExpiration ?? 0) === opt.value;
                 return (
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={async () => {
+                    onClick={() => {
                       if (onUpdateRoomTimer) {
-                        await onUpdateRoomTimer(opt.value);
+                        onUpdateRoomTimer(opt.value);
                       }
                       setShowTimerModal(false);
                     }}
-                    className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-left transition-all cursor-pointer border ${
                       isSelected
-                        ? 'border-emerald-500 bg-emerald-950/40 text-white shadow-sm'
-                        : 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 text-zinc-300'
+                        ? 'border-[#adc6ff] bg-[#171f33] text-white shadow-md'
+                        : 'border-white/5 bg-[#0b1326] text-[#c2c6d6] hover:border-white/20 hover:bg-[#171f33]'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl ${isSelected ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>
-                        <IconComponent className="w-4 h-4" />
+                      <div className={`p-2 rounded-full ${isSelected ? 'bg-[#adc6ff]/20 text-[#adc6ff]' : 'bg-[#222a3d] text-[#8c909f]'}`}>
+                        <Icon className="w-4 h-4" />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-white">{opt.label}</div>
-                        <div className="text-[11px] text-zinc-400 font-mono">{opt.desc}</div>
+                        <div className="font-semibold text-sm text-[#dae2fd]">{opt.label}</div>
+                        <div className="text-xs text-[#8c909f]">{opt.desc}</div>
                       </div>
                     </div>
-                    {isSelected && <Check className="w-4 h-4 text-emerald-400 mr-2" />}
+                    {isSelected && <Check className="w-4 h-4 text-[#adc6ff]" />}
                   </button>
                 );
               })}
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-zinc-950 border border-zinc-800 text-[11px] text-zinc-400 font-mono flex items-start gap-2">
-              <Shield className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-              <span>
-                New messages will automatically inherit this expiration timer unless explicitly overridden in the message composer.
-              </span>
             </div>
           </div>
         </div>
@@ -1197,42 +916,34 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* Room Credentials Modal */}
       {showCredsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/70 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b1326]/85 backdrop-blur-sm animate-fade-in font-sans">
+          <div className="w-full max-w-sm bg-[#131b2e] border border-white/10 shadow-2xl p-6 text-[#dae2fd] rounded-3xl animate-scale-up">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-                Room Credentials
-              </h3>
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-[#adc6ff]" />
+                <h3 className="text-base font-bold text-[#dae2fd]">Room Credentials</h3>
+              </div>
               <button
                 onClick={() => setShowCredsModal(false)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                className="p-1.5 rounded-full text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#222a3d] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs font-mono">
-              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-                <div className="text-zinc-400 text-[10px] mb-1 uppercase font-bold">Room Code</div>
-                <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{roomCode}</div>
+            <div className="space-y-4">
+              <div className="p-3 bg-[#0b1326] rounded-2xl border border-white/5">
+                <div className="text-xs text-[#8c909f] mb-1 font-mono uppercase">Room Code</div>
+                <div className="text-lg font-mono font-bold text-[#dae2fd]">{roomCode}</div>
               </div>
 
               {pin && (
-                <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800">
-                  <div className="text-zinc-400 text-[10px] mb-1 uppercase font-bold">Access PIN</div>
-                  <div className="text-xl font-bold tracking-widest text-emerald-600 dark:text-emerald-400">
-                    {pin}
-                  </div>
+                <div className="p-3 bg-[#0b1326] rounded-2xl border border-white/5">
+                  <div className="text-xs text-[#8c909f] mb-1 font-mono uppercase">Access PIN</div>
+                  <div className="text-xl font-mono font-bold text-[#adc6ff] tracking-widest">{pin}</div>
                 </div>
               )}
             </div>
-
-            <button
-              onClick={() => setShowCredsModal(false)}
-              className="w-full mt-6 py-2.5 rounded-xl bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 text-xs font-bold cursor-pointer"
-            >
-              Done
-            </button>
           </div>
         </div>
       )}

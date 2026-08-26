@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Volume2, VolumeX, Shield, AlertCircle } from 'lucide-react';
 import type { CallState, MemberRole } from '../types';
-import { formatDuration } from '../utils/helpers';
+import { formatDuration, triggerHaptic } from '../utils/helpers';
 
 interface AudioCallModalProps {
   callState: CallState;
@@ -49,16 +49,15 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
   const isIncoming = callState === 'RINGING';
   const isOutgoing = callState === 'CALLING';
   const isConnected = callState === 'CONNECTED';
-  const isEnded = ['ENDED', 'REJECTED', 'BUSY', 'TIMEOUT', 'DISCONNECTED', 'FAILED'].includes(callState);
 
-  const callerTitle = otherRole === 'owner' ? 'Room Owner' : 'Room Guest';
+  const audioActivity = Math.max(localVolume, remoteVolume);
 
   return (
     <div
       id="audio-call-modal-overlay"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in select-none font-sans"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b1326]/90 backdrop-blur-2xl animate-fade-in select-none font-sans overflow-hidden"
     >
-      {/* Mounted audio element for remote audio stream playback (avoid display:none so browsers render WebRTC audio) */}
+      {/* Mounted audio element for remote WebRTC stream playback */}
       <audio
         ref={remoteAudioRef}
         autoPlay
@@ -76,191 +75,167 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
 
       <div
         id="audio-call-modal-card"
-        className="w-full max-w-sm bg-[#141414] border border-[#2A2A2A] shadow-2xl p-7 text-center flex flex-col items-center justify-between min-h-[460px] relative overflow-hidden"
+        className="w-full max-w-sm bg-[#131b2e]/90 border border-white/10 rounded-[36px] shadow-2xl p-8 text-center flex flex-col items-center justify-between min-h-[520px] relative overflow-hidden"
         role="dialog"
         aria-modal="true"
       >
-        {/* Ambient Activity Glow */}
-        <div className="absolute inset-0 pointer-events-none opacity-20">
+        {/* Ambient Background Pulses */}
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-30">
           <div
-            className={`w-64 h-64 rounded-full absolute -top-10 -left-10 filter blur-3xl transition-transform duration-300 ${
-              isConnected ? 'bg-emerald-500' : isIncoming ? 'bg-amber-500' : 'bg-red-500'
-            }`}
+            className="absolute w-[300px] h-[300px] rounded-full bg-[#adc6ff]/20 blur-3xl transition-transform duration-300"
             style={{
-              transform: `scale(${1 + Math.max(localVolume, remoteVolume) * 2.5})`,
+              transform: `scale(${1 + audioActivity * 1.5})`,
             }}
           />
+          <div className="absolute w-[360px] h-[360px] rounded-full bg-[#ffb786]/10 blur-3xl" />
         </div>
 
-        {/* Top Header Information */}
-        <div className="w-full flex items-center justify-between text-xs font-mono text-[#888] relative z-10">
-          <span className="flex items-center gap-1.5 px-2.5 py-1 bg-[#1A1A1A] border border-[#333] text-[#CCC]">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span>P2P ENCRYPTED</span>
-          </span>
-          {isConnected && (
-            <span className="flex items-center gap-1.5 font-mono text-emerald-400 font-bold">
-              <span className="w-2 h-2 bg-emerald-400 animate-ping"></span>
-              {formatDuration(callDuration)}
+        {/* Top Header Information: Status & Duration */}
+        <div className="flex flex-col items-center justify-center pt-2 z-10 space-y-1">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#171f33] border border-white/5 text-[11px] font-mono text-[#adc6ff]">
+            <Shield className="w-3.5 h-3.5" />
+            <span className="tracking-widest uppercase">
+              {isConnected ? 'Connected' : isIncoming ? 'Incoming Call' : 'Connecting...'}
             </span>
-          )}
-        </div>
-
-        {/* Center Visual Call State */}
-        <div className="my-auto py-4 flex flex-col items-center relative z-10 w-full">
-          <div className="relative mb-5">
-            {/* Dynamic volume pulse rings */}
-            {isConnected && (
-              <>
-                <div
-                  className="absolute -inset-4 border border-emerald-500/30 transition-transform duration-75"
-                  style={{ transform: `scale(${1 + remoteVolume * 1.6})` }}
-                />
-                <div
-                  className="absolute -inset-8 border border-emerald-500/15 transition-transform duration-75"
-                  style={{ transform: `scale(${1 + remoteVolume * 2.2})` }}
-                />
-              </>
-            )}
-
-            {isIncoming && (
-              <div className="absolute -inset-4 bg-emerald-500/20 animate-ping" />
-            )}
-
-            {isOutgoing && (
-              <div className="absolute -inset-4 bg-white/10 animate-pulse" />
-            )}
-
-            <div className="w-20 h-20 bg-[#1C1C1C] border border-[#333] flex items-center justify-center text-white shadow-xl relative z-10">
-              <Phone
-                className={`w-8 h-8 ${
-                  isConnected
-                    ? 'text-emerald-400'
-                    : isIncoming
-                    ? 'text-emerald-400 animate-bounce'
-                    : 'text-[#DDD]'
-                }`}
-              />
-            </div>
           </div>
 
-          <h2 className="text-lg font-bold text-white uppercase tracking-wider mb-1">
-            {callerTitle}
-          </h2>
-
-          <p className="text-xs font-mono tracking-wide text-[#999] uppercase">
-            {isIncoming && 'Incoming Audio Call...'}
-            {isOutgoing && 'Calling Peer...'}
-            {isConnected && 'Live Call Connected'}
-            {callState === 'REJECTED' && 'Call Declined'}
-            {callState === 'BUSY' && 'Peer Busy'}
-            {callState === 'TIMEOUT' && 'No Answer'}
-            {callState === 'DISCONNECTED' && 'Call Disconnected'}
-            {callState === 'ENDED' && 'Call Ended'}
-            {callState === 'FAILED' && 'Connection Failed'}
-          </p>
-
-          {/* Error Message Display */}
-          {callError && (
-            <div className="mt-3 px-3 py-2 bg-red-950/60 border border-red-800 text-red-300 text-[11px] font-mono flex items-center gap-2 max-w-xs text-left">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-400" />
-              <span>{callError}</span>
-            </div>
-          )}
-
-          {/* Voice Spectrum Indicator */}
-          {isConnected && (
-            <div className="mt-5 w-full max-w-[200px] flex flex-col items-center gap-2">
-              <div className="flex items-center justify-center gap-1.5 h-6 w-full">
-                {[0.2, 0.4, 0.8, 1.0, 0.7, 0.5, 0.9, 0.6, 0.3, 0.7, 0.4].map((factor, i) => (
-                  <div
-                    key={i}
-                    className="w-1.5 bg-emerald-400 transition-all duration-75"
-                    style={{
-                      height: `${Math.max(4, remoteVolume * factor * 22 + 4)}px`,
-                    }}
-                  />
-                ))}
-              </div>
-              <div className="text-[10px] font-mono text-[#666] flex items-center justify-between w-full px-1">
-                <span>Mic: {isMuted ? 'Muted' : Math.round(localVolume * 100) + '%'}</span>
-                <span>Peer: {Math.round(remoteVolume * 100)}%</span>
-              </div>
-            </div>
-          )}
+          <span id="call-timer" className="text-3xl font-light tracking-widest tabular-nums text-[#dae2fd] pt-1">
+            {isConnected ? formatDuration(callDuration) : '--:--'}
+          </span>
         </div>
 
-        {/* Action Controls */}
-        <div className="w-full relative z-10 pt-2">
+        {/* Central Visualizer with Orbiting Particle Rings */}
+        <div className="flex-1 flex items-center justify-center z-10 relative px-4 my-6">
+          <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center">
+            {/* Outer Ring */}
+            <div className="absolute inset-0 rounded-full bg-[#171f33] shadow-[0_0_40px_rgba(173,198,255,0.05)] border border-white/5 flex items-center justify-center">
+              {/* Inner Circle */}
+              <div className="w-3/4 h-3/4 rounded-full bg-[#222a3d] shadow-[0_0_60px_rgba(173,198,255,0.1)] border border-white/10 flex items-center justify-center relative overflow-hidden">
+                {/* Dynamic Inner Glow based on speech */}
+                <div
+                  className="absolute inset-0 bg-[#adc6ff]/20 mix-blend-screen transition-all duration-150 ease-out"
+                  style={{
+                    transform: `scale(${1 + audioActivity * 0.4})`,
+                    opacity: 0.2 + audioActivity * 0.6,
+                  }}
+                />
+                <Mic className="w-10 h-10 text-[#adc6ff] relative z-10 drop-shadow-[0_0_10px_rgba(173,198,255,0.5)]" />
+              </div>
+            </div>
+
+            {/* Orbital SVG Circles */}
+            <svg aria-hidden="true" className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100">
+              <circle className="text-white/10" cx="50" cy="50" fill="none" r="48" stroke="currentColor" strokeWidth="0.75" strokeDasharray="3 3"></circle>
+              <g className="origin-center animate-[spin_8s_linear_infinite]">
+                <circle className="text-[#adc6ff]" cx="50" cy="2" fill="currentColor" r="2.5"></circle>
+              </g>
+              <g className="origin-center animate-[spin_12s_linear_infinite_reverse]">
+                <circle className="text-[#ffb786]" cx="98" cy="50" fill="currentColor" r="2"></circle>
+              </g>
+            </svg>
+          </div>
+        </div>
+
+        {/* Error Notice if any */}
+        {callError && (
+          <div className="mb-4 px-3 py-2 bg-[#93000a]/50 border border-[#ffb4ab]/30 text-[#ffdad6] text-xs font-mono rounded-xl flex items-center gap-2 max-w-xs text-left">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-[#ffb4ab]" />
+            <span>{callError}</span>
+          </div>
+        )}
+
+        {/* Bottom Controls */}
+        <div className="w-full z-10 pt-2">
           {isIncoming ? (
             /* Incoming Call: Decline or Accept */
             <div className="flex items-center justify-center gap-8">
               <button
-                onClick={onReject}
+                onClick={() => {
+                  triggerHaptic('heavy');
+                  onReject();
+                }}
                 id="reject-call-btn"
-                className="w-14 h-14 bg-red-600 hover:bg-red-500 text-white flex items-center justify-center transition-transform active:scale-90 cursor-pointer shadow-lg"
+                className="w-16 h-16 rounded-full bg-[#ffb4ab] text-[#690005] hover:bg-[#ffdad6] flex items-center justify-center transition-transform active:scale-90 shadow-xl cursor-pointer"
                 title="Decline"
               >
-                <PhoneOff className="w-6 h-6" />
+                <PhoneOff className="w-7 h-7" />
               </button>
 
               <button
-                onClick={onAccept}
+                onClick={() => {
+                  triggerHaptic('heavy');
+                  onAccept();
+                }}
                 id="accept-call-btn"
-                className="w-14 h-14 bg-emerald-500 hover:bg-emerald-400 text-black flex items-center justify-center transition-transform active:scale-90 animate-bounce cursor-pointer shadow-lg"
+                className="w-16 h-16 rounded-full bg-[#adc6ff] text-[#002e6a] hover:bg-[#4d8eff] flex items-center justify-center transition-transform active:scale-90 animate-bounce shadow-xl cursor-pointer"
                 title="Accept"
               >
-                <Phone className="w-6 h-6" />
+                <Phone className="w-7 h-7" />
               </button>
             </div>
           ) : isConnected ? (
-            /* Connected Call Controls: Mute, Hang Up, Speaker */
-            <div className="flex items-center justify-center gap-5">
+            /* Connected Call Controls: Speaker, End Call, Mute */
+            <div className="flex items-center justify-center gap-6">
+              {/* Speaker Toggle */}
               <button
-                onClick={onToggleMute}
-                id="call-mute-toggle-btn"
-                className={`w-12 h-12 flex items-center justify-center transition-all cursor-pointer border ${
-                  isMuted
-                    ? 'bg-amber-950/60 text-amber-400 border-amber-600'
-                    : 'bg-[#1C1C1C] text-[#CCC] border-[#333] hover:border-[#555] hover:text-white'
+                onClick={() => {
+                  triggerHaptic('light');
+                  onToggleSpeaker();
+                }}
+                id="call-speaker-toggle-btn"
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 shadow-md cursor-pointer ${
+                  isSpeaker
+                    ? 'bg-[#4d8eff] text-[#00285d]'
+                    : 'bg-[#171f33] text-[#c2c6d6] hover:bg-[#222a3d]'
                 }`}
-                title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                title={isSpeaker ? 'Speaker On' : 'Speaker Off'}
               >
-                {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                {isSpeaker ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
               </button>
 
+              {/* End Call Button */}
               <button
-                onClick={onEndCall}
+                onClick={() => {
+                  triggerHaptic('heavy');
+                  onEndCall();
+                }}
                 id="hangup-call-btn"
-                className="w-14 h-14 bg-red-600 hover:bg-red-500 text-white flex items-center justify-center transition-transform active:scale-90 cursor-pointer shadow-lg"
+                className="w-18 h-18 rounded-full bg-[#ffb4ab] text-[#690005] hover:bg-[#ffdad6] flex items-center justify-center active:scale-90 transition-all duration-300 shadow-[0_8px_32px_rgba(255,180,171,0.3)] cursor-pointer"
                 title="End Call"
               >
-                <PhoneOff className="w-6 h-6" />
+                <PhoneOff className="w-8 h-8" />
               </button>
 
+              {/* Mute Toggle */}
               <button
-                onClick={onToggleSpeaker}
-                id="call-speaker-toggle-btn"
-                className={`w-12 h-12 flex items-center justify-center transition-all cursor-pointer border ${
-                  isSpeaker
-                    ? 'bg-emerald-950/60 text-emerald-400 border-emerald-600'
-                    : 'bg-[#1C1C1C] text-[#CCC] border-[#333] hover:border-[#555] hover:text-white'
+                onClick={() => {
+                  triggerHaptic('light');
+                  onToggleMute();
+                }}
+                id="call-mute-toggle-btn"
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 shadow-md cursor-pointer ${
+                  isMuted
+                    ? 'bg-[#93000a] text-[#ffdad6]'
+                    : 'bg-[#171f33] text-[#c2c6d6] hover:bg-[#222a3d]'
                 }`}
-                title={isSpeaker ? 'Switch to earpiece' : 'Speaker mode'}
+                title={isMuted ? 'Unmute' : 'Mute'}
               >
-                {isSpeaker ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
               </button>
             </div>
           ) : isOutgoing ? (
             /* Outgoing Calling */
             <div className="flex items-center justify-center">
               <button
-                onClick={onEndCall}
+                onClick={() => {
+                  triggerHaptic('heavy');
+                  onEndCall();
+                }}
                 id="cancel-outgoing-call-btn"
-                className="w-14 h-14 bg-red-600 hover:bg-red-500 text-white flex items-center justify-center transition-transform active:scale-90 cursor-pointer shadow-lg"
+                className="w-16 h-16 rounded-full bg-[#ffb4ab] text-[#690005] hover:bg-[#ffdad6] flex items-center justify-center transition-transform active:scale-90 shadow-xl cursor-pointer"
                 title="Cancel Call"
               >
-                <PhoneOff className="w-6 h-6" />
+                <PhoneOff className="w-7 h-7" />
               </button>
             </div>
           ) : (
@@ -268,7 +243,7 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
             <button
               onClick={onEndCall}
               id="dismiss-call-btn"
-              className="w-full py-3 bg-[#222] hover:bg-[#333] text-white text-xs font-mono uppercase tracking-wider transition-colors cursor-pointer border border-[#333]"
+              className="w-full py-3.5 bg-[#171f33] hover:bg-[#222a3d] text-[#dae2fd] rounded-full text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer border border-white/5"
             >
               Dismiss
             </button>
@@ -278,4 +253,3 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
     </div>
   );
 };
-

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Share2, ArrowRight, Link as LinkIcon, AlertCircle } from 'lucide-react';
+import { Copy, Check, Share2, ArrowRight, Link as LinkIcon, ShieldCheck, Lock } from 'lucide-react';
 import { getRoomFullUrl, copyToClipboard, formatTimeRemaining } from '../utils/helpers';
 
 interface ShareRoomViewProps {
@@ -50,8 +50,8 @@ export const ShareRoomView: React.FC<ShareRoomViewProps> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Private 2P Room Invite',
-          text: `Join my private 2-person room on Private Messenger.\nPIN: ${pin}`,
+          title: 'Private Room Invite',
+          text: `Join my private 2-person space.\nPIN: ${pin}`,
           url: roomUrl,
         });
       } catch {}
@@ -61,116 +61,94 @@ export const ShareRoomView: React.FC<ShareRoomViewProps> = ({
   };
 
   return (
-    <div className="max-w-xl mx-auto px-4 sm:px-6 py-12 animate-fade-in font-sans">
-      <div className="bg-[#141414] border border-[#2A2A2A] shadow-2xl overflow-hidden text-[#F0F0F0]">
-        {/* Header */}
-        <div className="p-6 sm:p-8 border-b border-[#2A2A2A] text-left">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] uppercase tracking-[0.3em] text-[#888] font-mono">
-              Key Generation Complete
-            </span>
-            <span className="text-[10px] uppercase tracking-widest text-[#666] font-mono border border-[#2A2A2A] px-2 py-0.5">
-              ROOM_{roomCode}
-            </span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-light text-white tracking-tight mb-2">
-            Private Channel <span className="font-serif italic text-[#CCC]">Ready</span>
-          </h1>
-          <p className="text-xs text-[#888] font-light leading-relaxed">
-            Transmit this URL and one-time access PIN to your peer. Space capacity is capped at 02 participants.
-          </p>
+    <div className="flex flex-col w-full h-[calc(100vh-140px)] min-h-[500px] items-center justify-center p-4 sm:p-8 relative overflow-hidden bg-[#0b1326] animate-fade-in font-sans">
+      {/* Ambient Pulsing Glow */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-25">
+        <div className="w-[360px] h-[360px] bg-[#4d8eff]/20 rounded-full blur-[90px] animate-pulse"></div>
+      </div>
+
+      {/* Main Glassmorphic Card */}
+      <div className="relative z-10 flex flex-col items-center max-w-sm w-full bg-[#131b2e]/85 backdrop-blur-3xl rounded-[32px] p-7 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/5 text-center">
+        {/* Top Icon */}
+        <div className="w-16 h-16 rounded-full bg-[#4d8eff]/20 flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(77,142,255,0.2)]">
+          <Lock className="w-8 h-8 text-[#adc6ff]" />
         </div>
 
-        {/* Content */}
-        <div className="p-6 sm:p-8 space-y-6">
-          {/* Room Link */}
-          <div>
-            <label className="block text-[10px] uppercase tracking-[0.2em] text-[#888] mb-2 font-mono flex items-center gap-1.5">
-              <LinkIcon className="w-3.5 h-3.5" /> 01 // Direct URL
-            </label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-[#0E0E0E] border border-[#2A2A2A] px-4 py-3 text-xs font-mono text-[#E0E0E0] truncate select-all">
-                {roomUrl}
-              </div>
+        <div className="inline-flex items-center gap-1.5 bg-[#4d8eff]/15 border border-[#4d8eff]/30 px-3.5 py-1.5 rounded-full mb-3">
+          <ShieldCheck className="w-4 h-4 text-[#adc6ff]" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#adc6ff]">
+            Room Established
+          </span>
+        </div>
+
+        <h1 className="text-2xl font-semibold text-[#dae2fd] mb-1 tracking-tight">
+          Ready for connection.
+        </h1>
+        <p className="text-xs text-[#c2c6d6] mb-6 max-w-[260px] leading-relaxed">
+          Share these credentials with your partner. The room closes once session expires.
+        </p>
+
+        {/* Credentials */}
+        <div className="w-full space-y-3 mb-6 text-left">
+          {/* Link */}
+          <div className="w-full bg-[#222a3d] rounded-2xl p-3.5">
+            <span className="text-[10px] font-medium text-[#c2c6d6] mb-1 block uppercase tracking-wider">
+              Secure Link
+            </span>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-mono text-[#dae2fd] truncate select-all">
+                {roomUrl.replace(/^https?:\/\//, '')}
+              </span>
               <button
                 onClick={handleCopyLink}
-                id="copy-link-btn"
-                className="px-4 py-3 bg-[#1C1C1C] border border-[#2A2A2A] hover:bg-[#2A2A2A] text-[#F0F0F0] font-mono text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                id="share-copy-link-btn"
+                className="w-8 h-8 rounded-full bg-[#2d3449] flex items-center justify-center text-[#dae2fd] hover:text-[#adc6ff] transition-colors shrink-0 cursor-pointer"
                 title="Copy Link"
               >
-                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                {copiedLink ? <Check className="w-3.5 h-3.5 text-[#adc6ff]" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>
 
-          {/* 6-Digit PIN Display */}
-          <div>
-            <label className="block text-[10px] uppercase tracking-[0.2em] text-[#888] mb-2 font-mono">
-              02 // Salted Access PIN
-            </label>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 bg-[#0E0E0E] border border-[#2A2A2A] p-3 flex items-center justify-between">
-                <div className="flex gap-2 sm:gap-3 mx-auto">
-                  {pin.split('').map((char, index) => (
-                    <span
-                      key={index}
-                      className="w-8 h-10 sm:w-10 sm:h-12 bg-[#1A1A1A] border border-[#333] flex items-center justify-center font-mono text-lg sm:text-xl font-light text-white tracking-widest"
-                    >
-                      {char}
-                    </span>
-                  ))}
-                </div>
-              </div>
+          {/* PIN */}
+          <div className="w-full bg-[#222a3d] rounded-2xl p-3.5">
+            <span className="text-[10px] font-medium text-[#c2c6d6] mb-1 block uppercase tracking-wider">
+              Access PIN
+            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xl font-mono font-bold tracking-widest text-[#adc6ff] select-all">
+                {pin}
+              </span>
               <button
                 onClick={handleCopyPin}
-                id="copy-pin-btn"
-                className="px-4 py-3 bg-[#1C1C1C] border border-[#2A2A2A] hover:bg-[#2A2A2A] text-[#F0F0F0] font-mono text-[11px] uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer self-stretch"
+                id="share-copy-pin-btn"
+                className="w-8 h-8 rounded-full bg-[#2d3449] flex items-center justify-center text-[#dae2fd] hover:text-[#adc6ff] transition-colors shrink-0 cursor-pointer"
                 title="Copy PIN"
               >
-                {copiedPin ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedPin ? 'Copied' : 'Copy'}</span>
+                {copiedPin ? <Check className="w-3.5 h-3.5 text-[#adc6ff]" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <button
-              onClick={handleCopyFull}
-              id="copy-full-invite-btn"
-              className="px-4 py-3 border border-[#2A2A2A] hover:border-[#444] bg-[#0E0E0E] text-[#CCC] font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              {copiedFull ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedFull ? 'Copied' : 'Copy Full Invite'}</span>
-            </button>
-
-            <button
-              onClick={handleShare}
-              id="device-share-btn"
-              className="px-4 py-3 border border-[#2A2A2A] hover:border-[#444] bg-[#0E0E0E] text-[#CCC] font-mono text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <Share2 className="w-3.5 h-3.5 text-[#888]" />
-              <span>System Share</span>
-            </button>
-          </div>
-
-          {/* Privacy Note */}
-          <div className="flex items-start gap-2.5 p-3.5 bg-[#121212] border border-[#222] text-[11px] text-[#888] font-mono">
-            <AlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-            <span>
-              Once 2 participants connect, the access token is sealed and further attempts are rejected.
-            </span>
-          </div>
-
-          {/* Enter Room Button */}
+        {/* Action Buttons */}
+        <div className="w-full space-y-2.5">
           <button
             onClick={onEnterRoom}
-            id="enter-room-btn"
-            className="w-full py-4 bg-white text-black text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-[#D1D1D1] transition-all flex items-center justify-center gap-3 cursor-pointer mt-2"
+            id="share-enter-room-btn"
+            className="w-full py-3.5 rounded-full bg-[#adc6ff] text-[#002e6a] font-semibold text-xs flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(173,198,255,0.25)] hover:bg-[#adc6ff]/90 transition-all cursor-pointer active:scale-98"
           >
-            <span>Enter Private Room</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <span>Enter Room</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={handleShare}
+            id="share-system-btn"
+            className="w-full py-3 rounded-full bg-[#171f33] hover:bg-[#222a3d] text-[#dae2fd] text-xs font-semibold flex items-center justify-center gap-2 border border-white/5 transition-colors cursor-pointer"
+          >
+            <Share2 className="w-3.5 h-3.5 text-[#adc6ff]" />
+            <span>Share Invite</span>
           </button>
         </div>
       </div>

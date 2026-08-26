@@ -71,317 +71,235 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     saveNetworkSettings(updated);
   };
 
-  const handlePingFrequencyChange = (seconds: number) => {
+  const handleToggleVoiceBitrate = (rate: 'standard' | 'compressed_low') => {
     triggerHaptic('light');
-    const updated = { ...settings, pingFrequencySeconds: seconds };
+    const updated = { ...settings, voiceBitrate: rate };
     onUpdateSettings(updated);
     saveNetworkSettings(updated);
   };
 
-  const handleMediaDownloadChange = (
-    mediaType: 'image' | 'voice',
-    value: 'always' | 'wifi_only' | 'never'
-  ) => {
+  const handleToggleCallBitrate = (rate: 'adaptive' | 'low_bandwidth') => {
+    triggerHaptic('light');
+    const updated = { ...settings, callAudioBitrate: rate };
+    onUpdateSettings(updated);
+    saveNetworkSettings(updated);
+  };
+
+  const handleToggleAutoDownload = (key: 'voiceNotes' | 'photos') => {
     triggerHaptic('light');
     const updated = {
       ...settings,
-      ...(mediaType === 'image'
-        ? { autoDownloadImages: value }
-        : { autoDownloadVoiceNotes: value }),
+      autoDownloadMedia: {
+        ...settings.autoDownloadMedia,
+        [key]: !settings.autoDownloadMedia[key],
+      },
     };
     onUpdateSettings(updated);
     saveNetworkSettings(updated);
   };
 
-  const handleResetDefaults = () => {
-    triggerHaptic('warning');
-    onUpdateSettings(DEFAULT_NETWORK_SETTINGS);
-    saveNetworkSettings(DEFAULT_NETWORK_SETTINGS);
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div
-        className="relative w-full max-w-lg bg-[#111111] border border-zinc-800 rounded-3xl p-5 sm:p-7 shadow-2xl overflow-y-auto max-h-[90vh] text-zinc-200 selection:bg-white selection:text-black"
-        id="low-data-settings-modal"
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b1326]/85 backdrop-blur-xl animate-fade-in font-sans">
+      <div className="w-full max-w-lg bg-[#131b2e] border border-white/10 shadow-2xl p-6 text-[#dae2fd] rounded-3xl animate-scale-up max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-800 mb-5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+        <div className="flex items-center justify-between pb-4 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#171f33] border border-white/10 flex items-center justify-center text-[#adc6ff]">
               <Sliders className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                Connection & Data Saver
-              </h2>
-              <p className="text-xs text-zinc-400 font-mono">
-                Manage mobile data, cellular limits & ping rate
+              <h2 className="text-lg font-bold text-[#dae2fd]">Connection & Data</h2>
+              <p className="text-xs text-[#c2c6d6] font-mono">
+                Real-time optimization for low bandwidth
               </p>
             </div>
           </div>
-
           <button
-            onClick={() => {
-              triggerHaptic('light');
-              onClose();
-            }}
-            className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
-            aria-label="Close Settings"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-[#171f33] hover:bg-[#222a3d] text-[#c2c6d6] hover:text-[#dae2fd] flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Live Network Status Banner */}
-        <div
-          className={`p-3.5 rounded-2xl border mb-5 flex items-center justify-between ${
-            lowDataActive
-              ? 'bg-amber-950/30 border-amber-800/50 text-amber-300'
-              : 'bg-zinc-900/80 border-zinc-800 text-zinc-300'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                lowDataActive
-                  ? 'bg-amber-500/20 text-amber-400'
-                  : 'bg-emerald-500/20 text-emerald-400'
-              }`}
-            >
-              {networkInfo.isCellular ? (
-                <Signal className="w-5 h-5" />
-              ) : (
-                <Wifi className="w-5 h-5" />
+        {/* Content Scrollable */}
+        <div className="flex-1 overflow-y-auto py-4 space-y-6 pr-1">
+          {/* Real-time Network Telemetry */}
+          <div className="p-4 rounded-2xl bg-[#171f33] border border-white/5 space-y-3">
+            <div className="flex items-center justify-between text-xs font-mono text-[#c2c6d6]">
+              <div className="flex items-center gap-2">
+                <Wifi className="w-4 h-4 text-[#adc6ff]" />
+                <span className="font-semibold text-[#dae2fd]">LIVE NETWORK STATUS</span>
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  networkInfo.isOnline
+                    ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/60'
+                    : 'bg-red-950/60 text-red-400 border border-red-800/60'
+                }`}
+              >
+                {networkInfo.isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono text-center">
+              <div className="p-2 rounded-xl bg-[#222a3d]/60">
+                <div className="text-[10px] text-[#8c909f]">TYPE</div>
+                <div className="text-xs font-bold text-[#dae2fd] uppercase">
+                  {networkInfo.connectionType}
+                </div>
+              </div>
+              <div className="p-2 rounded-xl bg-[#222a3d]/60">
+                <div className="text-[10px] text-[#8c909f]">SPEED</div>
+                <div className="text-xs font-bold text-[#dae2fd] uppercase">
+                  {networkInfo.effectiveType.toUpperCase()}
+                </div>
+              </div>
+              <div className="p-2 rounded-xl bg-[#222a3d]/60">
+                <div className="text-[10px] text-[#8c909f]">DOWNLINK</div>
+                <div className="text-xs font-bold text-[#dae2fd]">
+                  {networkInfo.downlink ? `${networkInfo.downlink} Mbps` : 'N/A'}
+                </div>
+              </div>
+              <div className="p-2 rounded-xl bg-[#222a3d]/60">
+                <div className="text-[10px] text-[#8c909f]">LATENCY</div>
+                <div className="text-xs font-bold text-[#dae2fd]">
+                  {networkInfo.rtt ? `${networkInfo.rtt} ms` : 'N/A'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Low Data Mode Toggle */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-semibold text-[#dae2fd]">Low Data Mode</span>
+                <p className="text-xs text-[#c2c6d6]">
+                  Reduces bandwidth on weak connections & mobile data
+                </p>
+              </div>
+              {lowDataActive && (
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[#df7412]/20 border border-[#df7412]/40 text-[#ffb786]">
+                  Active
+                </span>
               )}
             </div>
-            <div>
-              <div className="text-xs font-bold text-white flex items-center gap-2">
-                <span>
-                  {networkInfo.isCellular ? 'Cellular / Metered' : 'Wi-Fi / Broadband'}
-                </span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 font-mono uppercase rounded ${
-                    lowDataActive
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                  }`}
-                >
-                  {lowDataActive ? 'Data Saver Active' : 'Full Bandwidth'}
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
-                Type: {networkInfo.effectiveType.toUpperCase()}
-                {networkInfo.downlink ? ` • ~${networkInfo.downlink} Mbps` : ''}
-                {networkInfo.rtt ? ` • ${networkInfo.rtt}ms RTT` : ''}
-              </p>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleToggleMode('off')}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  settings.lowDataMode === 'off'
+                    ? 'border-[#adc6ff] bg-[#171f33] text-white shadow-sm'
+                    : 'border-white/5 bg-[#0b1326] text-[#8c909f] hover:bg-[#171f33]'
+                }`}
+              >
+                <div className="font-semibold text-xs text-[#dae2fd]">Off</div>
+                <div className="text-[10px] text-[#8c909f] mt-0.5">High Fidelity</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleMode('auto_cellular')}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  settings.lowDataMode === 'auto_cellular'
+                    ? 'border-[#adc6ff] bg-[#171f33] text-white shadow-sm'
+                    : 'border-white/5 bg-[#0b1326] text-[#8c909f] hover:bg-[#171f33]'
+                }`}
+              >
+                <div className="font-semibold text-xs text-[#dae2fd]">Auto</div>
+                <div className="text-[10px] text-[#8c909f] mt-0.5">On Cellular</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleMode('on')}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  settings.lowDataMode === 'on'
+                    ? 'border-[#ffb786] bg-[#171f33] text-[#ffb786] shadow-sm'
+                    : 'border-white/5 bg-[#0b1326] text-[#8c909f] hover:bg-[#171f33]'
+                }`}
+              >
+                <div className="font-semibold text-xs">Always On</div>
+                <div className="text-[10px] text-[#8c909f] mt-0.5">Max Savings</div>
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Section 1: Low Data Mode Master Setting */}
-        <div className="space-y-4 mb-6">
-          <div>
-            <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
-              Low Data Mode Policy
-            </label>
-            <p className="text-xs text-zinc-400 mt-1">
-              Controls when bandwidth optimization and deferred media loading take effect.
-            </p>
+          {/* Voice Notes Audio Compression */}
+          <div className="space-y-3">
+            <div className="text-sm font-semibold text-[#dae2fd]">
+              Voice Notes Audio Compression
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleToggleVoiceBitrate('standard')}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  settings.voiceBitrate === 'standard'
+                    ? 'border-[#adc6ff] bg-[#171f33] text-white'
+                    : 'border-white/5 bg-[#0b1326] text-[#8c909f] hover:bg-[#171f33]'
+                }`}
+              >
+                <div className="font-semibold text-xs text-[#dae2fd]">Studio Opus</div>
+                <div className="text-[10px] text-[#8c909f] mt-0.5">48 kbps clear audio</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleVoiceBitrate('compressed_low')}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  settings.voiceBitrate === 'compressed_low'
+                    ? 'border-[#adc6ff] bg-[#171f33] text-white'
+                    : 'border-white/5 bg-[#0b1326] text-[#8c909f] hover:bg-[#171f33]'
+                }`}
+              >
+                <div className="font-semibold text-xs text-[#dae2fd]">Compact Opus</div>
+                <div className="text-[10px] text-[#8c909f] mt-0.5">16 kbps 70% smaller</div>
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              {
-                id: 'auto_cellular',
-                label: 'Auto Cellular',
-                desc: 'Recommended',
-              },
-              {
-                id: 'on',
-                label: 'Always On',
-                desc: 'Max Savings',
-              },
-              {
-                id: 'off',
-                label: 'Disabled',
-                desc: 'Always Full',
-              },
-            ].map((opt) => {
-              const isSelected = settings.lowDataMode === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() =>
-                    handleToggleMode(opt.id as 'off' | 'on' | 'auto_cellular')
-                  }
-                  className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    isSelected
-                      ? 'bg-amber-500/15 border-amber-500 text-white shadow-md'
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between w-full mb-1">
-                    <span className="text-xs font-bold">{opt.label}</span>
-                    {isSelected && (
-                      <span className="w-4 h-4 rounded-full bg-amber-400 text-black flex items-center justify-center text-[10px]">
-                        <Check className="w-3 h-3 stroke-[3]" />
-                      </span>
-                    )}
+          {/* Auto Download Toggles */}
+          <div className="space-y-3">
+            <div className="text-sm font-semibold text-[#dae2fd]">
+              Media Auto-Download
+            </div>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => handleToggleAutoDownload('voiceNotes')}
+                className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-[#0b1326] border border-white/5 hover:border-white/10 transition-colors text-left cursor-pointer"
+              >
+                <div>
+                  <div className="text-xs font-semibold text-[#dae2fd]">
+                    Auto-download Voice Notes
                   </div>
-                  <span className="text-[10px] font-mono text-zinc-400">
-                    {opt.desc}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Section 2: WebSocket Ping Keepalive Frequency */}
-        <div className="space-y-3 mb-6 p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800/80">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Radio className="w-4 h-4 text-sky-400" />
-              <label className="text-xs font-bold text-white font-mono">
-                WebSocket Keepalive Frequency
-              </label>
-            </div>
-            <span className="text-[11px] font-mono text-sky-400 font-bold bg-sky-950/60 px-2 py-0.5 rounded border border-sky-800/60">
-              {lowDataActive
-                ? `Active: Every ${settings.pingFrequencySeconds}s`
-                : 'Active: Every 10s (High-Res)'}
-            </span>
-          </div>
-
-          <p className="text-[11px] text-zinc-400 leading-relaxed">
-            Extending the keepalive interval in Low Data Mode minimizes radio wakeups and reduces signaling packet overhead by up to 80% on mobile cellular data.
-          </p>
-
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            {[
-              { sec: 30, label: '30s', tag: '-66% Packets' },
-              { sec: 45, label: '45s', tag: '-78% (Ideal)' },
-              { sec: 60, label: '60s', tag: '-83% Max Saver' },
-            ].map((item) => {
-              const isSelected = settings.pingFrequencySeconds === item.sec;
-              return (
-                <button
-                  key={item.sec}
-                  onClick={() => handlePingFrequencyChange(item.sec)}
-                  className={`py-2 px-2.5 rounded-xl border text-center transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-sky-500/20 border-sky-500 text-sky-200 font-bold shadow-xs'
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
-                  }`}
-                >
-                  <div className="text-xs font-mono">{item.label}</div>
-                  <div className="text-[9px] text-zinc-400 font-mono mt-0.5">
-                    {item.tag}
+                  <div className="text-[11px] text-[#8c909f]">
+                    When disabled, tap to download before playing
                   </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Section 3: Media Auto-Download Policy */}
-        <div className="space-y-4 mb-6">
-          <div className="flex items-center gap-2">
-            <Download className="w-4 h-4 text-emerald-400" />
-            <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
-              Cellular Media Auto-Download
-            </label>
-          </div>
-
-          {/* Photos / Images */}
-          <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-zinc-200">Disappearing Photos</span>
-              <span className="text-[10px] font-mono text-zinc-400">
-                {settings.autoDownloadImages === 'wifi_only'
-                  ? 'Wi-Fi Only (Tap to Load on Cell)'
-                  : settings.autoDownloadImages === 'never'
-                  ? 'Always Manual Tap'
-                  : 'Always Auto-Download'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-1.5">
-              {(
-                [
-                  { val: 'wifi_only', label: 'Wi-Fi Only' },
-                  { val: 'never', label: 'Manual Tap' },
-                  { val: 'always', label: 'Always Auto' },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.val}
-                  onClick={() => handleMediaDownloadChange('image', opt.val)}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-mono border transition-all cursor-pointer ${
-                    settings.autoDownloadImages === opt.val
-                      ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300'
+                </div>
+                <div
+                  className={`w-5 h-5 rounded-md flex items-center justify-center ${
+                    settings.autoDownloadMedia.voiceNotes
+                      ? 'bg-[#adc6ff] text-[#002e6a]'
+                      : 'border border-white/20'
                   }`}
                 >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Voice Notes / Audio */}
-          <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 space-y-2">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-zinc-200">Voice Notes (Audio)</span>
-              <span className="text-[10px] font-mono text-zinc-400">
-                {settings.autoDownloadVoiceNotes === 'wifi_only'
-                  ? 'Wi-Fi Only (Tap to Play on Cell)'
-                  : settings.autoDownloadVoiceNotes === 'never'
-                  ? 'Always Manual Tap'
-                  : 'Always Auto-Download'}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-1.5">
-              {(
-                [
-                  { val: 'wifi_only', label: 'Wi-Fi Only' },
-                  { val: 'never', label: 'Manual Tap' },
-                  { val: 'always', label: 'Always Auto' },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.val}
-                  onClick={() => handleMediaDownloadChange('voice', opt.val)}
-                  className={`py-1.5 px-2 rounded-lg text-[11px] font-mono border transition-all cursor-pointer ${
-                    settings.autoDownloadVoiceNotes === opt.val
-                      ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 font-semibold'
-                      : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+                  {settings.autoDownloadMedia.voiceNotes && <Check className="w-3.5 h-3.5" />}
+                </div>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="pt-4 border-t border-zinc-800 flex items-center justify-between gap-3">
+        {/* Footer */}
+        <div className="pt-4 border-t border-white/5 flex justify-end">
           <button
-            onClick={handleResetDefaults}
-            className="text-xs text-zinc-400 hover:text-zinc-200 font-mono transition-colors cursor-pointer"
-          >
-            Reset Defaults
-          </button>
-
-          <button
-            onClick={() => {
-              triggerHaptic('light');
-              onClose();
-            }}
-            className="px-6 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black font-semibold text-xs tracking-wide transition-all shadow-md active:scale-95 cursor-pointer"
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-full bg-[#adc6ff] text-[#002e6a] text-xs font-semibold hover:bg-[#adc6ff]/90 transition-colors cursor-pointer"
           >
             Done
           </button>

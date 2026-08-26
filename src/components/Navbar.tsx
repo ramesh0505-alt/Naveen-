@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Smartphone, Monitor, Download, Sliders, Signal, Wifi } from 'lucide-react';
+import { Lock, Smartphone, Monitor, Sliders, ArrowLeft } from 'lucide-react';
 import type { RoomStatus } from '../types';
 import { triggerHaptic } from '../utils/helpers';
 
@@ -27,32 +27,67 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleFrameMode,
 }) => {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-[#2A2A2A] bg-[#0C0C0C]/95 backdrop-blur-md transition-colors">
-      <div className="max-w-6xl mx-auto px-3 sm:px-8 h-16 sm:h-18 flex items-center justify-between">
-        {/* Brand */}
-        <button
-          onClick={() => {
-            triggerHaptic('light');
-            onNavigateHome();
-          }}
-          className="flex flex-col text-left group focus:outline-none cursor-pointer"
-          id="brand-logo-btn"
-        >
-          <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-[#888] group-hover:text-white transition-colors">
-            Secure Mobile 2P
-          </span>
-          <div className="flex items-baseline gap-1.5">
-            <h1 className="text-lg sm:text-2xl font-light tracking-tighter text-[#F0F0F0]">
-              PRIVATE<span className="italic font-serif text-white">2p</span>
-            </h1>
-            <span className="text-[8px] sm:text-[9px] uppercase tracking-[0.2em] px-1 sm:px-1.5 py-0.5 border border-[#333] text-emerald-400 font-mono rounded">
-              APP
-            </span>
-          </div>
-        </button>
+    <header className="sticky top-0 z-40 w-full bg-[#0b1326]/80 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.3)] border-b border-white/5 font-sans">
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
+        {/* Left Side: Back button + Brand Title */}
+        <div className="flex items-center gap-2">
+          {currentRoomCode ? (
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                onNavigateHome();
+              }}
+              className="w-10 h-10 flex items-center justify-center text-[#c2c6d6] hover:text-[#dae2fd] rounded-full hover:bg-[#171f33] transition-colors cursor-pointer"
+              title="Return Home"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          ) : (
+            <div className="w-10 h-10 flex items-center justify-center text-[#adc6ff] rounded-full bg-[#171f33]/60">
+              <Lock className="w-5 h-5" />
+            </div>
+          )}
 
-        {/* Right actions: Low Data Settings, Phone mode toggle, Install app, and Room / Privacy Status */}
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              onNavigateHome();
+            }}
+            className="flex items-center gap-2 text-left cursor-pointer focus:outline-none"
+            id="brand-logo-btn"
+          >
+            <span className="text-lg sm:text-xl font-semibold tracking-tight text-[#dae2fd]">
+              {currentRoomCode ? 'Private Room' : 'Private Space'}
+            </span>
+          </button>
+        </div>
+
+        {/* Right actions: Status, Low Data, Phone Frame, Install App */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Active Room Badge */}
+          {currentRoomCode && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#171f33] border border-white/5 rounded-full">
+              <span className="relative flex h-2 w-2">
+                <span
+                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    memberCount === 2 ? 'bg-[#adc6ff]' : 'bg-[#ffb786]'
+                  }`}
+                ></span>
+                <span
+                  className={`relative inline-flex rounded-full h-2 w-2 ${
+                    memberCount === 2 ? 'bg-[#adc6ff] shadow-[0_0_8px_rgba(173,198,255,0.8)]' : 'bg-[#ffb786]'
+                  }`}
+                ></span>
+              </span>
+              <span className="text-xs font-mono text-[#dae2fd] tracking-wider">
+                {currentRoomCode}
+              </span>
+              <span className="text-[10px] font-mono text-[#8c909f] border-l border-[#424754]/50 pl-2">
+                {memberCount ?? 1}/2
+              </span>
+            </div>
+          )}
+
           {/* Settings / Data Saver Button */}
           {onOpenSettings && (
             <button
@@ -61,19 +96,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onOpenSettings();
               }}
               id="nav-settings-btn"
-              className={`px-2 sm:px-2.5 py-1.5 rounded-lg border text-[11px] font-mono flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 ${
+              className={`p-2 sm:px-3 sm:py-1.5 rounded-full border text-xs font-mono flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 ${
                 isLowDataActive
-                  ? 'bg-amber-950/60 border-amber-800/80 hover:border-amber-500 text-amber-300'
-                  : 'bg-zinc-900 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800 text-zinc-300'
+                  ? 'bg-[#461f00]/60 border-[#df7412] text-[#ffb786]'
+                  : 'bg-[#171f33] border-white/5 text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#222a3d]'
               }`}
               title="Connection & Data Saver Settings"
             >
-              <Sliders className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">
+              <Sliders className="w-4 h-4" />
+              <span className="hidden sm:inline">
                 {isLowDataActive ? 'Low Data' : 'Settings'}
               </span>
               {isLowDataActive && (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#ffb786] animate-pulse" />
               )}
             </button>
           )}
@@ -86,15 +121,15 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onOpenInstall();
               }}
               id="nav-install-app-btn"
-              className="px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 hover:border-amber-500/60 hover:bg-zinc-800 text-amber-300 text-[11px] font-mono flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-full bg-[#171f33] border border-white/5 hover:border-[#adc6ff]/50 text-[#adc6ff] text-xs font-mono flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
               title="Install Mobile App / PWA"
             >
-              <Smartphone className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden xs:inline">App</span>
+              <Smartphone className="w-4 h-4" />
+              <span className="hidden sm:inline">App</span>
             </button>
           )}
 
-          {/* Desktop Phone Frame Toggle (visible on screens >= 640px) */}
+          {/* Desktop Phone Frame Toggle */}
           {onToggleFrameMode && (
             <button
               onClick={() => {
@@ -102,57 +137,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onToggleFrameMode();
               }}
               id="toggle-phone-frame-btn"
-              className="hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 text-[11px] font-mono transition-colors cursor-pointer"
-              title={isFrameMode ? 'Switch to responsive view' : 'Preview in mobile phone mockup'}
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#171f33] border border-white/5 hover:bg-[#222a3d] text-[#c2c6d6] text-xs font-mono transition-colors cursor-pointer"
+              title={isFrameMode ? 'Switch to full responsive view' : 'Preview in mobile phone mockup'}
             >
               {isFrameMode ? (
                 <>
-                  <Monitor className="w-3.5 h-3.5 text-sky-400" />
+                  <Monitor className="w-3.5 h-3.5 text-[#4d8eff]" />
                   <span>Full View</span>
                 </>
               ) : (
                 <>
-                  <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+                  <Smartphone className="w-3.5 h-3.5 text-[#adc6ff]" />
                   <span>Phone Frame</span>
                 </>
               )}
             </button>
-          )}
-
-          {currentRoomCode ? (
-            <div className="flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 bg-[#161616] border border-[#2A2A2A] rounded-lg">
-              <span className="relative flex h-2 w-2">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    memberCount === 2 ? 'bg-emerald-400' : 'bg-amber-400'
-                  }`}
-                ></span>
-                <span
-                  className={`relative inline-flex rounded-full h-2 w-2 ${
-                    memberCount === 2 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-amber-500'
-                  }`}
-                ></span>
-              </span>
-              <span className="text-[11px] sm:text-xs font-mono tracking-wider text-[#E0E0E0]">
-                {currentRoomCode}
-              </span>
-              <span className="text-[9px] sm:text-[10px] uppercase tracking-widest text-[#777] font-mono border-l border-[#2A2A2A] pl-2 hidden xs:inline">
-                {memberCount ?? 1}/2
-              </span>
-            </div>
-          ) : (
-            <div className="hidden sm:flex items-center gap-3 text-[10px] uppercase tracking-[0.2em] text-[#888]">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]"></span>
-                Zero Trace
-              </span>
-              <span className="text-[#333]">•</span>
-              <span>Encrypted</span>
-            </div>
           )}
         </div>
       </div>
     </header>
   );
 };
-

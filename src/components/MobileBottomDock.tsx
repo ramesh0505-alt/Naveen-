@@ -1,15 +1,5 @@
 import React from 'react';
-import {
-  MessageSquare,
-  PlusCircle,
-  LogIn,
-  ShieldCheck,
-  Smartphone,
-  PhoneCall,
-  Flame,
-  Home,
-  Sliders,
-} from 'lucide-react';
+import { MessageSquare, Phone, Share2, PlusCircle, LogIn, Sparkles } from 'lucide-react';
 import { triggerHaptic } from '../utils/helpers';
 
 interface MobileBottomDockProps {
@@ -37,95 +27,68 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
   onStartCall,
   isCallActive,
 }) => {
-  // If we are currently in CHAT screen, the chat input is already docked at the bottom.
-  // We can render a subtle floating mobile quick action dock for navigation when on LANDING, SHARE, WAITING, JOIN, or EXPIRED.
-  const isChatScreen = currentScreen === 'CHAT';
-
-  if (isChatScreen) {
-    return null;
-  }
-
   return (
     <nav
       id="mobile-bottom-navigation-dock"
-      className="fixed bottom-0 left-0 right-0 z-40 bg-[#0E0E0E]/95 backdrop-blur-xl border-t border-[#222222] px-2 sm:px-3 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl transition-all select-none"
+      className="fixed bottom-0 w-full z-40 pb-safe bg-[#0b1326]/80 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.3)] border-t border-white/5 font-sans select-none"
     >
-      <div className="max-w-md mx-auto flex items-center justify-around">
-        {/* Home Tab */}
+      <div className="max-w-md mx-auto h-16 flex items-center justify-around px-2">
+        {/* Chat / Space Tab */}
         <button
           onClick={() => {
             triggerHaptic('light');
-            onNavigateHome();
+            if (hasActiveRoom && currentScreen !== 'CHAT') {
+              onNavigateHome();
+            } else if (!hasActiveRoom) {
+              onOpenCreate();
+            }
           }}
-          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
-            currentScreen === 'LANDING'
-              ? 'text-white font-semibold'
-              : 'text-zinc-500 hover:text-zinc-300'
+          className={`flex flex-col items-center gap-1 transition-colors cursor-pointer ${
+            currentScreen === 'CHAT' || currentScreen === 'LANDING'
+              ? 'text-[#adc6ff]'
+              : 'text-[#c2c6d6] hover:text-[#dae2fd]'
           }`}
         >
-          <Home className={`w-4.5 h-4.5 ${currentScreen === 'LANDING' ? 'text-white' : ''}`} />
-          <span className="text-[10px] font-mono tracking-tight">Home</span>
+          <MessageSquare className="w-5 h-5" />
+          <span className="text-xs font-medium">Chat</span>
         </button>
 
-        {/* Create Room Tab */}
+        {/* Call Tab */}
         <button
           onClick={() => {
             triggerHaptic('medium');
-            onOpenCreate();
+            if (onStartCall) {
+              onStartCall();
+            } else if (hasActiveRoom) {
+              // start call if possible
+            } else {
+              onOpenCreate();
+            }
           }}
-          className="flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-zinc-400 hover:text-white transition-all cursor-pointer"
+          className={`flex flex-col items-center gap-1 transition-colors cursor-pointer ${
+            isCallActive
+              ? 'text-[#adc6ff]'
+              : 'text-[#c2c6d6] hover:text-[#dae2fd]'
+          }`}
         >
-          <PlusCircle className="w-4.5 h-4.5 text-emerald-400" />
-          <span className="text-[10px] font-mono tracking-tight">Create</span>
+          <Phone className="w-5 h-5" />
+          <span className="text-xs font-medium">Call</span>
         </button>
 
-        {/* Join Room Tab */}
+        {/* Join / Secure Tab */}
         <button
           onClick={() => {
-            triggerHaptic('medium');
+            triggerHaptic('light');
             onOpenJoin();
           }}
-          className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
-            currentScreen === 'JOIN'
-              ? 'text-white font-semibold'
-              : 'text-zinc-400 hover:text-zinc-200'
+          className={`flex flex-col items-center gap-1 transition-colors cursor-pointer ${
+            currentScreen === 'JOIN' || currentScreen === 'SHARE'
+              ? 'text-[#adc6ff]'
+              : 'text-[#c2c6d6] hover:text-[#dae2fd]'
           }`}
         >
-          <LogIn className="w-4.5 h-4.5 text-sky-400" />
-          <span className="text-[10px] font-mono tracking-tight">Join PIN</span>
-        </button>
-
-        {/* Low Data / Settings Tab */}
-        {onOpenSettings && (
-          <button
-            onClick={() => {
-              triggerHaptic('light');
-              onOpenSettings();
-            }}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all cursor-pointer ${
-              isLowDataActive ? 'text-amber-400' : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <div className="relative">
-              <Sliders className="w-4.5 h-4.5" />
-              {isLowDataActive && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              )}
-            </div>
-            <span className="text-[10px] font-mono tracking-tight">Data</span>
-          </button>
-        )}
-
-        {/* Install Mobile App Tab */}
-        <button
-          onClick={() => {
-            triggerHaptic('light');
-            onOpenInstall();
-          }}
-          className="flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-zinc-400 hover:text-amber-300 transition-all cursor-pointer"
-        >
-          <Smartphone className="w-4.5 h-4.5 text-amber-400" />
-          <span className="text-[10px] font-mono tracking-tight">App PWA</span>
+          <Share2 className="w-5 h-5" />
+          <span className="text-xs font-medium">Secure</span>
         </button>
       </div>
     </nav>

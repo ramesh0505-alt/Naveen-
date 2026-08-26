@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Loader2, AlertCircle, Shield } from 'lucide-react';
+import { Lock, ArrowRight, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import type { RoomInfo } from '../types';
 import { apiRequest } from '../utils/api';
+import { triggerHaptic } from '../utils/helpers';
 
 interface JoinRoomViewProps {
   initialRoomCode?: string;
@@ -20,20 +21,31 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
   onJoined,
   onCancel,
 }) => {
-  const [roomCode, setRoomCode] = useState(initialRoomCode);
-  const [pinDigits, setPinDigits] = useState(['', '', '', '', '', '']);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [roomCode, setRoomCode] = useState<string>(initialRoomCode);
+  const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [isJoining, setIsJoining] = useState<boolean>(false);
+  const [isCheckingRoom, setIsCheckingRoom] = useState<boolean>(false);
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
-  const [isCheckingRoom, setIsCheckingRoom] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Automatically check room status when code reaches 8 alphanumeric chars
   useEffect(() => {
-    if (roomCode.trim().length >= 4) {
-      checkRoom(roomCode.trim());
+    const clean = roomCode.trim().toUpperCase();
+    if (clean.length === 8) {
+      checkRoom(clean);
+    } else {
+      setRoomInfo(null);
     }
   }, [roomCode]);
+
+  // Focus the first PIN input when room info is loaded
+  useEffect(() => {
+    if (roomInfo && inputRefs.current[0]) {
+      inputRefs.current[0].focus();
+    }
+  }, [roomInfo]);
 
   const checkRoom = async (code: string) => {
     setIsCheckingRoom(true);
@@ -54,47 +66,46 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
   };
 
   const handleDigitChange = (index: number, val: string) => {
-    if (val.length > 1) {
-      const pasted = val.replace(/\D/g, '').slice(0, 6);
-      const newDigits = [...pinDigits];
-      for (let i = 0; i < 6; i++) {
-        newDigits[i] = pasted[i] || '';
-      }
-      setPinDigits(newDigits);
-      const nextIndex = Math.min(pasted.length, 5);
-      inputRefs.current[nextIndex]?.focus();
-      return;
-    }
+    const char = val.slice(-1);
+    const updated = [...digits];
+    updated[index] = char;
+    setDigits(updated);
+    setError(null);
 
-    const digit = val.replace(/\D/g, '');
-    const newDigits = [...pinDigits];
-    newDigits[index] = digit;
-    setPinDigits(newDigits);
-
-    if (digit && index < 5) {
+    if (char && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !pinDigits[index] && index > 0) {
+    if (e.key === 'Backspace' && !digits[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
 
-  const handleJoin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const pin = pinDigits.join('');
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').trim().replace(/[^0-9]/g, '');
+    if (pasted.length >= 6) {
+      const chars = pasted.slice(0, 6).split('');
+      setDigits(chars);
+      inputRefs.current[5]?.focus();
+    }
+  };
+
+  const pin = digits.join('');
+
+  const handleJoin = async () => {
     if (!roomCode.trim()) {
-      setError('Please enter a room code.');
+      setError('Please provide an 8-character room code.');
       return;
     }
     if (pin.length !== 6) {
-      setError('Please enter the complete 6-digit PIN.');
+      setError('Please enter the full 6-digit access PIN.');
       return;
     }
 
-    setIsLoading(true);
+    setIsJoining(true);
     setError(null);
 
     try {
@@ -104,6 +115,7 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
         body: JSON.stringify({ pin }),
       });
 
+      triggerHaptic('success');
       onJoined({
         roomCode: roomCode.trim(),
         sessionToken: data.sessionToken,
@@ -112,122 +124,122 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
         roomInfo: data.roomInfo,
       });
     } catch (err: any) {
-      setError(err.message || 'Error joining private room.');
-      setIsLoading(false);
+      triggerHaptic('warning');
+      setError(err.message || 'Incorrect PIN or room is full.');
+      setDigits(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
+    } finally {
+      setIsJoining(false);
     }
   };
 
-  const isPinComplete = pinDigits.every((d) => d.length === 1);
-
   return (
-    <div className="max-w-md mx-auto px-4 sm:px-6 py-12 animate-fade-in font-sans">
-      <div className="bg-[#141414] border border-[#2A2A2A] shadow-2xl overflow-hidden text-[#F0F0F0]">
-        {/* Header */}
-        <div className="p-6 sm:p-8 border-b border-[#2A2A2A] text-left">
-          <span className="text-[10px] uppercase tracking-[0.3em] text-[#888] font-mono">
-            Peer Authentication
-          </span>
-          <h1 className="text-2xl font-light text-white tracking-tight mt-1 mb-1">
-            Access <span className="font-serif italic text-[#CCC]">Private Room</span>
+    <div className="flex flex-col w-full px-4 sm:px-8 py-6 min-h-[calc(100vh-120px)] max-w-lg mx-auto justify-between animate-fade-in font-sans">
+      {/* Top back button */}
+      <div className="w-full flex items-center justify-between">
+        <button
+          onClick={onCancel}
+          id="join-back-btn"
+          className="w-10 h-10 flex items-center justify-center text-[#c2c6d6] hover:text-[#dae2fd] rounded-full hover:bg-[#171f33] transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <span className="text-xs font-mono text-[#8c909f] uppercase tracking-wider">
+          Direct Connect
+        </span>
+      </div>
+
+      {/* Hero / Header Section */}
+      <div className="flex flex-col items-center justify-center my-auto space-y-6 text-center">
+        <div className="relative mb-2">
+          <div className="absolute inset-0 bg-[#adc6ff]/20 rounded-full blur-xl scale-150 animate-pulse"></div>
+          <div className="relative bg-[#171f33] w-24 h-24 rounded-full flex items-center justify-center shadow-2xl overflow-hidden ring-1 ring-white/10">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#4d8eff]/20 to-transparent"></div>
+            <Lock className="w-10 h-10 text-[#adc6ff] drop-shadow-[0_0_15px_rgba(77,142,255,0.5)] relative z-10" />
+          </div>
+        </div>
+
+        <div className="text-center space-y-2 max-w-[300px]">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-[#dae2fd] tracking-tight">
+            Private Room
           </h1>
-          <p className="text-xs text-[#888] font-light">
-            Enter the 6-digit access PIN provided by the room creator.
+          <p className="text-sm text-[#c2c6d6] leading-relaxed">
+            Enter the room code and 6-digit access PIN to securely join the sanctuary.
           </p>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleJoin} className="p-6 sm:p-8 space-y-6">
+        {/* Room Code Input (If not preset) */}
+        <div className="w-full max-w-xs space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-mono text-[#c2c6d6] px-1">
+            <span>ROOM CODE</span>
+            {isCheckingRoom && <span className="text-[#adc6ff] animate-pulse">Verifying...</span>}
+            {roomInfo && <span className="text-emerald-400 font-semibold">Active Sanctuary</span>}
+          </div>
+          <input
+            type="text"
+            value={roomCode}
+            onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+            placeholder="e.g. 8KX92LMQ"
+            maxLength={12}
+            id="room-code-input"
+            className="w-full h-12 text-center font-mono text-base tracking-widest bg-[#171f33] border border-[#424754]/50 rounded-2xl text-[#dae2fd] shadow-inner focus:outline-none focus:border-[#adc6ff] focus:ring-1 focus:ring-[#adc6ff]/50 transition-all uppercase"
+          />
+        </div>
+
+        {/* PIN Input Area */}
+        <div className="pt-2 w-full max-w-sm mx-auto">
+          <div className="text-center text-[11px] font-mono text-[#c2c6d6] mb-3">
+            ENTER 6-DIGIT ACCESS PIN
+          </div>
+          <div className="flex justify-center gap-2 sm:gap-2.5 px-2" onPaste={handlePaste}>
+            {digits.map((digit, idx) => (
+              <input
+                key={idx}
+                ref={(el) => { inputRefs.current[idx] = el; }}
+                aria-label={`Digit ${idx + 1}`}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleDigitChange(idx, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(idx, e)}
+                id={`pin-input-${idx}`}
+                className="w-12 h-14 text-center font-mono text-xl font-bold bg-[#171f33]/80 border border-[#424754]/50 rounded-xl text-[#dae2fd] shadow-inner focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/40 transition-all duration-300"
+              />
+            ))}
+          </div>
+
+          {/* Error Message */}
           {error && (
-            <div className="p-3.5 bg-red-950/40 border border-red-800 text-xs text-red-300 font-mono flex items-start gap-2.5 animate-shake">
-              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <div className="mt-4 flex items-center justify-center gap-2 text-[#ffb4ab] text-xs font-mono animate-pulse">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{error}</span>
             </div>
           )}
+        </div>
+      </div>
 
-          {/* Room Code field (if not preset) */}
-          <div>
-            <label className="block text-[10px] uppercase tracking-[0.2em] text-[#888] mb-2 font-mono">
-              Room Identifier
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.trim())}
-                placeholder="e.g. 8Kx92LmQ"
-                disabled={Boolean(initialRoomCode)}
-                className="w-full bg-[#0E0E0E] border border-[#2A2A2A] px-4 py-3 text-xs font-mono tracking-wider text-white focus:outline-none focus:border-white disabled:opacity-70"
-              />
-              {isCheckingRoom && (
-                <div className="absolute right-3 top-3">
-                  <Loader2 className="w-4 h-4 animate-spin text-[#888]" />
-                </div>
-              )}
-            </div>
-            {roomInfo && (
-              <p className="text-[11px] text-emerald-400 mt-1.5 flex items-center gap-1.5 font-mono">
-                <Shield className="w-3.5 h-3.5" /> Room active • {roomInfo.currentMembers}/02 Peers
-              </p>
-            )}
-          </div>
-
-          {/* 6-Digit PIN Inputs */}
-          <div>
-            <label className="block text-[10px] uppercase tracking-[0.2em] text-[#888] mb-3 font-mono flex items-center justify-between">
-              <span>02 // 6-Digit Access PIN</span>
-              <span className="text-[9px] text-[#666]">Auto-Advances</span>
-            </label>
-
-            <div className="flex items-center justify-between gap-2 sm:gap-2.5">
-              {pinDigits.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={6}
-                  value={digit}
-                  onChange={(e) => handleDigitChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  onFocus={(e) => e.target.select()}
-                  id={`pin-digit-${index}`}
-                  className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-mono font-light bg-[#0E0E0E] border border-[#2A2A2A] text-white focus:outline-none focus:border-white transition-all shadow-inner"
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="pt-2 space-y-3">
-            <button
-              type="submit"
-              disabled={isLoading || !isPinComplete || !roomCode}
-              id="submit-join-room-btn"
-              className="w-full py-4 bg-white text-black text-[11px] uppercase tracking-[0.3em] font-bold hover:bg-[#D1D1D1] transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Verifying PIN...</span>
-                </>
-              ) : (
-                <>
-                  <span>Enter Room</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={onCancel}
-              className="w-full py-2 text-[10px] uppercase tracking-[0.2em] font-mono text-[#777] hover:text-white transition-colors"
-            >
-              Return Home
-            </button>
-          </div>
-        </form>
+      {/* Bottom Action */}
+      <div className="pt-6 pb-2 w-full">
+        <button
+          onClick={handleJoin}
+          disabled={isJoining || pin.length !== 6 || !roomCode.trim()}
+          id="confirm-join-room-btn"
+          className="w-full h-14 rounded-full bg-[#adc6ff] text-[#002e6a] font-semibold text-base flex items-center justify-center gap-2 shadow-[0_8px_30px_rgba(77,142,255,0.3)] hover:bg-[#adc6ff]/90 transition-all duration-300 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {isJoining ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Connecting...</span>
+            </>
+          ) : (
+            <>
+              <span>Join Room</span>
+              <ArrowRight className="w-5 h-5" />
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
