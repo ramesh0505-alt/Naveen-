@@ -1,0 +1,16 @@
+{
+  "entities": {
+    "rooms": {
+      "title": "Room",
+      "description": "Temporary 2-person private room record",
+      "properties": {
+        "roomCode": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "expiresAt": { "type": "number" },
+        "status": { "type": "string" },
+        "hostRole": { "type": "string" }
+      },
+      "required": ["roomCode", "createdAt", "expiresAt", "status"]
+    }
+  }
+}

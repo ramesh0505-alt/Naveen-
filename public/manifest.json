@@ -1,0 +1,50 @@
+{
+  "name": "Private 2P • Two-Person Messenger",
+  "short_name": "Private2P",
+  "description": "Encrypted, temporary 2-person private messaging with PIN access, voice notes, disappearing photos, and live audio calling.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0C0C0C",
+  "theme_color": "#0C0C0C",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["social", "security", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Create Room",
+      "short_name": "Create",
+      "description": "Start a new temporary 2-person private room",
+      "url": "/?action=create",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Join Room",
+      "short_name": "Join",
+      "description": "Join an existing private room with PIN",
+      "url": "/?action=join",
+      "icons": [{ "src": "/icon.svg", "sizes": "any" }]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "Private Two-Person Messenger",
+  "description": "Temporary, private two-person mobile messenger application with PIN access, real-time messaging, voice notes, disappearing media, and live WebRTC audio calls.",
+  "requestFramePermissions": ["microphone", "camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
