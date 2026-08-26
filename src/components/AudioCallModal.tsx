@@ -140,14 +140,14 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
             <button
               onClick={handleGrantPermission}
               disabled={isRequestingMic}
-              className="w-full py-4 rounded-2xl bg-[#adc6ff] text-[#002e6a] font-semibold text-sm tracking-wide hover:bg-[#d8e2ff] transition-all flex items-center justify-center gap-2 group cursor-pointer shadow-lg active:scale-95"
+              className="area-tap w-full min-h-[48px] py-4 rounded-2xl bg-[#adc6ff] text-[#002e6a] font-semibold text-sm tracking-wide hover:bg-[#d8e2ff] transition-all flex items-center justify-center gap-2 group cursor-pointer shadow-lg active:scale-95"
             >
               <span>Grant Access</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>
             <button
               onClick={onEndCall}
-              className="w-full py-3.5 rounded-2xl bg-transparent text-[#adc6ff] font-semibold text-sm tracking-wide hover:bg-[#2d3449] transition-colors border border-[#adc6ff]/20 backdrop-blur-md cursor-pointer active:scale-95"
+              className="area-tap w-full min-h-[48px] py-3.5 rounded-2xl bg-transparent text-[#adc6ff] font-semibold text-sm tracking-wide hover:bg-[#2d3449] transition-colors border border-[#adc6ff]/20 backdrop-blur-md cursor-pointer active:scale-95"
             >
               Return to Chat
             </button>
@@ -179,9 +179,9 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
                 onReject();
               }}
               id="decline-call-btn"
-              className="flex-1 flex flex-col items-center justify-center gap-2 py-4 rounded-3xl bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20 active:bg-[#ffb4ab]/30 transition-colors backdrop-blur-xl border border-[#ffb4ab]/20 shadow-sm cursor-pointer"
+              className="area-tap flex-1 min-h-[72px] flex flex-col items-center justify-center gap-2 py-4 rounded-3xl bg-[#ffb4ab]/10 hover:bg-[#ffb4ab]/20 active:bg-[#ffb4ab]/30 transition-colors backdrop-blur-xl border border-[#ffb4ab]/20 shadow-sm cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-full bg-[#ffb4ab] text-[#690005] flex items-center justify-center shadow-[0_10px_25px_rgba(255,180,171,0.25)]">
+              <div className="w-14 h-14 min-w-[48px] min-h-[48px] rounded-full bg-[#ffb4ab] text-[#690005] flex items-center justify-center shadow-[0_10px_25px_rgba(255,180,171,0.25)]">
                 <PhoneOff className="w-6 h-6" />
               </div>
               <span className="text-xs font-mono uppercase tracking-wider text-[#ffb4ab] font-semibold">Decline</span>
@@ -194,9 +194,9 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
                 onAccept();
               }}
               id="accept-call-btn"
-              className="flex-1 flex flex-col items-center justify-center gap-2 py-4 rounded-3xl bg-[#adc6ff] hover:bg-[#d8e2ff] active:scale-95 transition-all shadow-[0_15px_35px_rgba(173,198,255,0.25)] cursor-pointer"
+              className="area-tap flex-1 min-h-[72px] flex flex-col items-center justify-center gap-2 py-4 rounded-3xl bg-[#adc6ff] hover:bg-[#d8e2ff] active:scale-95 transition-all shadow-[0_15px_35px_rgba(173,198,255,0.25)] cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-full bg-[#002e6a] text-[#adc6ff] flex items-center justify-center">
+              <div className="w-14 h-14 min-w-[48px] min-h-[48px] rounded-full bg-[#002e6a] text-[#adc6ff] flex items-center justify-center">
                 <Phone className="w-6 h-6 animate-bounce" />
               </div>
               <span className="text-xs font-mono uppercase tracking-wider text-[#002e6a] font-bold">Accept</span>
@@ -251,7 +251,7 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
                   onToggleMute();
                 }}
                 id="btn-mute"
-                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 shadow-md cursor-pointer ${
+                className={`area-tap w-14 h-14 min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 shadow-md cursor-pointer ${
                   isMuted
                     ? 'bg-[#4d8eff] text-[#00285d]'
                     : 'bg-[#171f33] text-[#dae2fd] hover:bg-[#222a3d]'
@@ -268,7 +268,7 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
                   onEndCall();
                 }}
                 id="btn-end"
-                className="w-18 h-18 rounded-full bg-[#ffb4ab] text-[#690005] hover:bg-[#ffdad6] flex items-center justify-center transition-all duration-300 active:scale-90 shadow-[0_4px_24px_rgba(255,180,171,0.35)] shrink-0 cursor-pointer"
+                className="area-tap w-18 h-18 min-w-[48px] min-h-[48px] rounded-full bg-[#ffb4ab] text-[#690005] hover:bg-[#ffdad6] flex items-center justify-center transition-all duration-300 active:scale-90 shadow-[0_4px_24px_rgba(255,180,171,0.35)] shrink-0 cursor-pointer"
                 title="End Call"
               >
                 <PhoneOff className="w-7 h-7" />
@@ -281,7 +281,7 @@ export const AudioCallModal: React.FC<AudioCallModalProps> = ({
                   onToggleSpeaker();
                 }}
                 id="btn-speaker"
-                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 shadow-md cursor-pointer ${
+                className={`area-tap w-14 h-14 min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center transition-all duration-300 active:scale-95 shadow-md cursor-pointer ${
                   isSpeaker
                     ? 'bg-[#4d8eff] text-[#00285d]'
                     : 'bg-[#171f33] text-[#dae2fd] hover:bg-[#222a3d]'

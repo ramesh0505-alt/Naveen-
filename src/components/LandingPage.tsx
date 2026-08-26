@@ -36,7 +36,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [isPlayingDemo, setIsPlayingDemo] = useState<boolean>(false);
 
   return (
-    <div className="flex flex-col w-full px-4 sm:px-8 lg:px-12 py-8 gap-12 sm:gap-16 overflow-x-hidden relative bg-[#0b1326] text-[#dae2fd] font-sans selection:bg-[#4d8eff]/30 selection:text-white">
+    <div className="flex flex-col w-full px-4 sm:px-8 lg:px-12 pt-4 pb-24 sm:pb-16 gap-10 sm:gap-16 overflow-x-hidden relative bg-[#0b1326] text-[#dae2fd] font-sans selection:bg-[#4d8eff]/30 selection:text-white">
       {/* Ambient Background Orbs */}
       <div
         className="absolute top-[-100px] right-[-100px] w-96 h-96 bg-[#4d8eff]/15 rounded-full blur-[100px] pointer-events-none mix-blend-screen opacity-50 animate-pulse"
@@ -48,11 +48,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       />
 
       {/* Hero Section */}
-      <section className="flex flex-col lg:flex-row items-center justify-between gap-12 relative z-10 pt-2">
+      <section className="flex flex-col lg:flex-row items-center justify-between gap-8 sm:gap-12 relative z-10 pt-1">
         {/* Hero Text */}
         <div className="flex-1 flex flex-col items-start gap-3 max-w-xl animate-fade-in-up">
           {/* Badge */}
-          <div className="flex items-center gap-2 mb-2 bg-[#171f33]/80 px-3.5 py-1.5 rounded-full backdrop-blur-md border border-white/5 shadow-xs">
+          <div className="flex items-center gap-2 mb-1 bg-[#171f33]/80 px-3.5 py-1.5 rounded-full backdrop-blur-md border border-white/5 shadow-xs">
             <span className="w-2 h-2 rounded-full bg-[#adc6ff] pulsate"></span>
             <span className="text-[11px] font-mono tracking-widest text-[#adc6ff] uppercase font-semibold">
               Private Communication
@@ -69,19 +69,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </h1>
 
           {/* Subtitle */}
-          <p className="text-base sm:text-lg text-[#c2c6d6] max-w-md mt-2 leading-relaxed">
-            Chat, send voice messages, and talk privately in a temporary space built exclusively for two.
+          <p className="text-sm sm:text-base md:text-lg text-[#c2c6d6] max-w-md mt-1 leading-relaxed">
+            Chat, send voice notes, and talk privately in a temporary encrypted space built exclusively for two.
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-6 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-5 w-full sm:w-auto">
             <button
               onClick={() => {
                 triggerHaptic('medium');
                 onCreateRoom();
               }}
               id="hero-create-room-btn"
-              className="flex items-center justify-center gap-2.5 bg-[#adc6ff] hover:bg-[#d8e2ff] text-[#002e6a] font-semibold text-base px-7 py-4 rounded-2xl transition-all duration-300 shadow-[0_4px_24px_rgba(173,198,255,0.25)] hover:shadow-[0_8px_32px_rgba(173,198,255,0.4)] hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+              className="w-full sm:w-auto min-h-[50px] flex items-center justify-center gap-2.5 bg-[#adc6ff] hover:bg-[#d8e2ff] text-[#002e6a] font-semibold text-base px-7 py-3.5 rounded-2xl transition-all duration-300 shadow-[0_4px_24px_rgba(173,198,255,0.25)] hover:shadow-[0_8px_32px_rgba(173,198,255,0.4)] active:scale-95 cursor-pointer"
             >
               <PlusCircle className="w-5 h-5 text-[#002e6a]" />
               <span>Create Private Room</span>
@@ -93,7 +93,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onJoinRoom();
               }}
               id="hero-join-room-btn"
-              className="flex items-center justify-center gap-2.5 bg-[#171f33] hover:bg-[#222a3d] text-[#dae2fd] font-semibold text-base px-7 py-4 rounded-2xl transition-all duration-300 border border-white/5 shadow-sm hover:-translate-y-0.5 active:scale-95 group cursor-pointer"
+              className="w-full sm:w-auto min-h-[50px] flex items-center justify-center gap-2.5 bg-[#171f33] hover:bg-[#222a3d] text-[#dae2fd] font-semibold text-base px-7 py-3.5 rounded-2xl transition-all duration-300 border border-white/5 shadow-sm active:scale-95 group cursor-pointer"
             >
               <LogIn className="w-5 h-5 text-[#bcc7de] group-hover:text-[#adc6ff] transition-colors" />
               <span>Join a Room</span>
@@ -101,7 +101,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Sub-label */}
-          <p className="text-xs sm:text-sm text-[#8c909f] mt-3 flex items-center gap-2 font-mono">
+          <p className="text-xs sm:text-sm text-[#8c909f] mt-2 flex items-center gap-2 font-mono">
             <Lock className="w-3.5 h-3.5 text-[#adc6ff]" />
             <span>No phone number. No username. Just a private room.</span>
           </p>

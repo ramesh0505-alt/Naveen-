@@ -178,7 +178,7 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
         <button
           onClick={togglePlay}
           id="voice-play-toggle-btn"
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 cursor-pointer flex-shrink-0 shadow-lg ${
+          className={`area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center transition-all active:scale-90 cursor-pointer flex-shrink-0 shadow-lg ${
             !isDownloaded
               ? 'bg-amber-400 text-black hover:bg-amber-300 ring-2 ring-amber-400/50'
               : isMe
@@ -195,11 +195,11 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
           title={!isDownloaded ? 'Tap to download audio (Low Data Mode)' : undefined}
         >
           {!isDownloaded ? (
-            <Download className="w-4 h-4 text-black animate-bounce" />
+            <Download className="w-5 h-5 text-black animate-bounce" />
           ) : isPlaying ? (
-            <Pause className="w-4 h-4 fill-current" />
+            <Pause className="w-5 h-5 fill-current" />
           ) : (
-            <Play className="w-4 h-4 fill-current ml-0.5" />
+            <Play className="w-5 h-5 fill-current ml-0.5" />
           )}
         </button>
 
@@ -220,7 +220,7 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
         <button
           type="button"
           onClick={cyclePlaybackRate}
-          className="text-[10px] font-mono px-2 py-1 rounded-lg border border-zinc-700/80 hover:border-zinc-500 bg-zinc-900 text-zinc-300 hover:text-white transition-all cursor-pointer flex-shrink-0 active:scale-95 shadow-xs"
+          className="area-tap min-h-[48px] min-w-[48px] text-[11px] font-mono px-2.5 py-2 rounded-xl border border-zinc-700/80 hover:border-zinc-500 bg-zinc-900 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center flex-shrink-0 active:scale-95 shadow-xs"
           title="Toggle playback speed (1x, 1.5x, 2x)"
         >
           {playbackRate}x

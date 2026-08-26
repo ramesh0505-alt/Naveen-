@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { KeyRound, ArrowRight, Loader2, AlertCircle, ArrowLeft, ShieldCheck } from 'lucide-react';
 import type { RoomInfo } from '../types';
 import { apiRequest } from '../utils/api';
-import { triggerHaptic } from '../utils/helpers';
+import { triggerHaptic, hapticPinKey, hapticPinSuccess, hapticPinError } from '../utils/helpers';
 
 interface JoinRoomViewProps {
   initialRoomCode?: string;
@@ -101,8 +101,11 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
     setDigits(updated);
     setError(null);
 
-    if (char && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+    if (char) {
+      hapticPinKey();
+      if (index < 5) {
+        inputRefs.current[index + 1]?.focus();
+      }
     }
   };
 
@@ -116,10 +119,13 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace') {
       if (!digits[index] && index > 0) {
+        hapticPinKey();
         inputRefs.current[index - 1]?.focus();
         const updated = [...digits];
         updated[index - 1] = '';
         setDigits(updated);
+      } else if (digits[index]) {
+        hapticPinKey();
       }
     }
   };
@@ -128,6 +134,7 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').trim().replace(/[^0-9]/g, '');
     if (pasted.length > 0) {
+      hapticPinKey();
       const chars = pasted.slice(0, 6).split('');
       const updated = ['', '', '', '', '', ''];
       chars.forEach((c, i) => {
@@ -146,11 +153,13 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
 
     if (!roomCode.trim()) {
       setError('Please provide the 8-character room code.');
+      hapticPinError();
       triggerShake();
       return;
     }
     if (pin.length !== 6) {
       setError('Please enter the complete 6-digit access PIN.');
+      hapticPinError();
       triggerShake();
       return;
     }
@@ -165,7 +174,7 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
         body: JSON.stringify({ pin }),
       });
 
-      triggerHaptic('success');
+      hapticPinSuccess();
       onJoined({
         roomCode: roomCode.trim().toUpperCase(),
         sessionToken: data.sessionToken,
@@ -174,7 +183,7 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
         roomInfo: data.roomInfo,
       });
     } catch (err: any) {
-      triggerHaptic('warning');
+      hapticPinError();
       setError(err.message || 'Invalid PIN or room is full.');
       triggerShake();
       setDigits(['', '', '', '', '', '']);

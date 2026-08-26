@@ -20,13 +20,23 @@ import {
   Sliders,
   User,
   Plus,
+  Play,
+  Pause,
+  Volume2,
 } from 'lucide-react';
 import type { MessageItem, MemberRole, RoomInfo, ViewMode } from '../types';
 import { VoiceMessagePlayer } from './VoiceMessagePlayer';
 import { DisappearingPhotoModal } from './DisappearingPhotoModal';
 import { VoiceRecorder, SoundEffects } from '../utils/audio';
 import { extractWaveformData } from '../utils/waveform';
-import { formatTimeRemaining, formatDuration, triggerHaptic } from '../utils/helpers';
+import {
+  formatTimeRemaining,
+  formatDuration,
+  triggerHaptic,
+  hapticRecordStart,
+  hapticRecordStop,
+  hapticMessageSent,
+} from '../utils/helpers';
 import { QuickRepliesBar } from './QuickRepliesBar';
 import { NetworkSettings, shouldDeferMediaDownload, isLowDataActive, DEFAULT_NETWORK_SETTINGS } from '../utils/network';
 
@@ -90,11 +100,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [liveWaveform, setLiveWaveform] = useState<number[]>(Array(24).fill(0.15));
   const [voicePreviewData, setVoicePreviewData] = useState<{
     blob: Blob;
     base64: string;
     duration: number;
   } | null>(null);
+
+  // Voice preview playback state
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const recorderRef = useRef<VoiceRecorder | null>(null);
   const recordingTimerRef = useRef<any>(null);
@@ -102,6 +118,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [photoViewMode] = useState<ViewMode>('view_once');
+
+  // Hold-to-record state tracking
+  const holdStartTimestampRef = useRef<number | null>(null);
+  const isHoldingRef = useRef<boolean>(false);
 
   // Revealed burn-on-read messages tracking
   const [revealedMessageIds, setRevealedMessageIds] = useState<Set<string>>(new Set());
@@ -119,6 +139,59 @@ export const ChatView: React.FC<ChatViewProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOtherTyping]);
+
+  // Handle preview audio element initialization & cleanup
+  useEffect(() => {
+    if (!voicePreviewData) {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current = null;
+      }
+      setIsPreviewPlaying(false);
+      setPreviewCurrentTime(0);
+      return;
+    }
+
+    const audio = new Audio(voicePreviewData.base64);
+    previewAudioRef.current = audio;
+
+    audio.ontimeupdate = () => {
+      setPreviewCurrentTime(audio.currentTime);
+    };
+
+    audio.onended = () => {
+      setIsPreviewPlaying(false);
+      setPreviewCurrentTime(0);
+    };
+
+    return () => {
+      audio.pause();
+      audio.src = '';
+      previewAudioRef.current = null;
+    };
+  }, [voicePreviewData]);
+
+  const togglePreviewPlayback = () => {
+    if (!previewAudioRef.current) return;
+    triggerHaptic('light');
+    if (isPreviewPlaying) {
+      previewAudioRef.current.pause();
+      setIsPreviewPlaying(false);
+    } else {
+      previewAudioRef.current
+        .play()
+        .then(() => setIsPreviewPlaying(true))
+        .catch(() => {});
+    }
+  };
+
+  const handleSeekPreview = (percent: number) => {
+    if (!previewAudioRef.current || !voicePreviewData) return;
+    const maxDur = Math.max(voicePreviewData.duration, 1);
+    const target = percent * maxDur;
+    setPreviewCurrentTime(target);
+    previewAudioRef.current.currentTime = target;
+  };
 
   // Handle typing debounce
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -172,12 +245,31 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  // Start Voice Recording
+  // Start Voice Recording (with live waveform extraction)
   const startRecording = async () => {
     try {
-      triggerHaptic('medium');
+      hapticRecordStart();
       const recorder = new VoiceRecorder();
-      await recorder.start();
+      await recorder.start((volume, freqData) => {
+        if (freqData && freqData.length > 0) {
+          const sampleCount = 24;
+          const step = Math.max(1, Math.floor(freqData.length / sampleCount));
+          const bars: number[] = [];
+          for (let i = 0; i < sampleCount; i++) {
+            const raw = freqData[Math.min(freqData.length - 1, i * step)] || 0;
+            const norm = Math.max(0.12, Math.min(1.0, (raw / 255) * 1.5 + volume * 0.4));
+            bars.push(norm);
+          }
+          setLiveWaveform(bars);
+        } else {
+          // Simulate volume bounce if frequency data is restricted
+          const bars = Array.from({ length: 24 }, (_, i) => {
+            const phase = (Date.now() / 150 + i * 0.4) % (Math.PI * 2);
+            return Math.max(0.15, Math.min(1.0, (Math.sin(phase) + 1) * 0.4 * volume + 0.15));
+          });
+          setLiveWaveform(bars);
+        }
+      });
 
       recorderRef.current = recorder;
       setIsRecording(true);
@@ -197,7 +289,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   // Stop Recording & Preview
   const stopRecording = async () => {
     if (!recorderRef.current) return;
-    triggerHaptic('medium');
+    hapticRecordStop();
 
     try {
       const data = await recorderRef.current.stop();
@@ -227,7 +319,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   // Send Recorded Voice
   const handleSendVoice = async () => {
     if (!voicePreviewData) return;
-    triggerHaptic('medium');
+    hapticMessageSent();
 
     let burnOnRead = false;
     let burnAfterSeconds: number | undefined = undefined;
@@ -260,6 +352,70 @@ export const ChatView: React.FC<ChatViewProps> = ({
       SoundEffects.playMessageSent();
     } catch {
       triggerHaptic('warning');
+    }
+  };
+
+  // Handle Hold / Tap Microphone Pointer Events
+  const handleMicPointerDown = () => {
+    holdStartTimestampRef.current = Date.now();
+    isHoldingRef.current = true;
+    if (!isRecording && !voicePreviewData) {
+      startRecording();
+    }
+  };
+
+  const handleMicPointerUp = () => {
+    if (holdStartTimestampRef.current && isHoldingRef.current) {
+      const holdDuration = Date.now() - holdStartTimestampRef.current;
+      isHoldingRef.current = false;
+      holdStartTimestampRef.current = null;
+
+      // If user held for more than 700ms, stop and go to preview
+      if (holdDuration >= 700 && isRecording) {
+        stopRecording();
+      }
+    }
+  };
+
+  // Stop recording and send directly
+  const handleDirectSendRecording = async () => {
+    if (!recorderRef.current) return;
+    hapticRecordStop();
+    try {
+      const data = await recorderRef.current.stop();
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      setIsRecording(false);
+      SoundEffects.playRecordStop();
+
+      let burnOnRead = false;
+      let burnAfterSeconds: number | undefined = undefined;
+      if (messageTimerOverride === -1) {
+        burnOnRead = true;
+        burnAfterSeconds = 10;
+      } else if (typeof messageTimerOverride === 'number' && messageTimerOverride > 0) {
+        burnAfterSeconds = messageTimerOverride;
+      } else if (roomInfo?.defaultMessageExpiration === -1) {
+        burnOnRead = true;
+        burnAfterSeconds = 10;
+      } else if (
+        typeof roomInfo?.defaultMessageExpiration === 'number' &&
+        roomInfo.defaultMessageExpiration > 0
+      ) {
+        burnAfterSeconds = roomInfo.defaultMessageExpiration;
+      }
+
+      hapticMessageSent();
+      await onSendMessage({
+        type: 'VOICE',
+        mediaReference: data.base64,
+        duration: data.duration,
+        burnOnRead,
+        burnAfterSeconds,
+      });
+      SoundEffects.playMessageSent();
+    } catch {
+      setIsRecording(false);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     }
   };
 
@@ -365,18 +521,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
   ];
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-4rem)] max-w-4xl mx-auto bg-[#0b1326] text-[#dae2fd] font-sans relative overflow-hidden pb-[76px]">
+    <div className="flex flex-col w-full h-full min-h-[calc(100dvh-4rem)] max-w-4xl mx-auto bg-[#0b1326] text-[#dae2fd] font-sans relative overflow-hidden">
       {/* Chat Header */}
-      <div className="px-4 py-2.5 flex items-center justify-between border-b border-[#222a3d] bg-[#0b1326]/90 backdrop-blur-md sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#171f33] border border-white/5 flex items-center justify-center text-[#adc6ff]">
+      <div className="px-3 sm:px-4 py-2.5 flex items-center justify-between border-b border-[#222a3d] bg-[#0b1326]/95 backdrop-blur-md sticky top-0 z-30 shadow-xs">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="w-10 h-10 rounded-full bg-[#171f33] border border-white/5 flex items-center justify-center text-[#adc6ff] shrink-0">
             <Lock className="w-5 h-5" />
           </div>
           <div className="flex flex-col">
-            <span className="text-base sm:text-lg font-semibold text-[#dae2fd]">
+            <span className="text-sm sm:text-base font-semibold text-[#dae2fd] leading-tight">
               Private Room
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 mt-0.5">
               <span
                 className={`w-2 h-2 rounded-full ${
                   otherUserOnline
@@ -384,7 +540,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     : 'bg-[#8c909f]'
                 }`}
               ></span>
-              <span className="text-xs font-mono text-[#c2c6d6]">
+              <span className="text-[11px] sm:text-xs font-mono text-[#c2c6d6]">
                 {otherUserOnline ? 'Connected' : 'Waiting for peer...'}
               </span>
             </div>
@@ -396,13 +552,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
           {/* Quick Timer Pill */}
           <button
             type="button"
-            onClick={() => setShowTimerModal(true)}
+            onClick={() => {
+              triggerHaptic('light');
+              setShowTimerModal(true);
+            }}
             id="room-timer-settings-btn"
-            className="flex items-center gap-1.5 text-xs font-mono px-3 py-1.5 rounded-full border border-white/10 bg-[#171f33] text-[#dae2fd] hover:bg-[#222a3d] transition-colors cursor-pointer"
+            className="area-tap min-h-[48px] flex items-center gap-1.5 text-xs font-mono px-3.5 py-2.5 rounded-full border border-white/10 bg-[#171f33] text-[#dae2fd] hover:bg-[#222a3d] active:scale-95 transition-all cursor-pointer"
             title="Configure Disappearing Messages Timer"
           >
-            <RoomExpIcon className={`w-3.5 h-3.5 ${roomExpirationBadge.color}`} />
-            <span>{roomExpirationBadge.short}</span>
+            <RoomExpIcon className={`w-4 h-4 ${roomExpirationBadge.color}`} />
+            <span className="font-semibold">{roomExpirationBadge.short}</span>
           </button>
 
           {/* Start Audio Call Button */}
@@ -412,7 +571,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               onStartCall();
             }}
             id="start-call-btn"
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#171f33] hover:bg-[#222a3d] transition-colors text-[#adc6ff] cursor-pointer"
+            className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full bg-[#171f33] hover:bg-[#222a3d] active:scale-95 transition-all text-[#adc6ff] cursor-pointer shadow-sm"
             title="Start Audio Call"
           >
             <Phone className="w-5 h-5" />
@@ -421,24 +580,27 @@ export const ChatView: React.FC<ChatViewProps> = ({
           {/* More Menu Toggle */}
           <div className="relative">
             <button
-              onClick={() => setShowMenu(!showMenu)}
+              onClick={() => {
+                triggerHaptic('light');
+                setShowMenu(!showMenu);
+              }}
               id="room-menu-btn"
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#171f33] text-[#c2c6d6] hover:text-[#dae2fd] transition-colors cursor-pointer"
+              className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full bg-[#171f33]/60 hover:bg-[#171f33] text-[#c2c6d6] hover:text-[#dae2fd] active:scale-95 transition-all cursor-pointer"
             >
               <MoreVertical className="w-5 h-5" />
             </button>
 
             {/* Dropdown Menu */}
             {showMenu && (
-              <div className="absolute right-0 top-12 w-64 rounded-2xl bg-[#171f33] border border-white/10 shadow-2xl py-2 z-50 animate-scale-up font-sans">
+              <div className="absolute right-0 top-14 w-68 rounded-2xl bg-[#171f33] border border-white/10 shadow-2xl py-2 z-50 animate-scale-up font-sans">
                 <button
                   onClick={() => {
                     setShowTimerModal(true);
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#dae2fd] hover:bg-[#222a3d] flex items-center gap-2.5 cursor-pointer"
+                  className="w-full min-h-[48px] px-4 py-3 text-xs text-left font-medium text-[#dae2fd] hover:bg-[#222a3d] flex items-center gap-3 cursor-pointer"
                 >
-                  <Flame className="w-4 h-4 text-[#ffb786]" />
+                  <Flame className="w-4 h-4 text-[#ffb786] shrink-0" />
                   <span>Disappearing Messages Timer</span>
                 </button>
 
@@ -448,9 +610,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       setShowMenu(false);
                       onOpenSettings();
                     }}
-                    className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#dae2fd] hover:bg-[#222a3d] flex items-center gap-2.5 cursor-pointer"
+                    className="w-full min-h-[48px] px-4 py-3 text-xs text-left font-medium text-[#dae2fd] hover:bg-[#222a3d] flex items-center gap-3 cursor-pointer"
                   >
-                    <Sliders className="w-4 h-4 text-[#adc6ff]" />
+                    <Sliders className="w-4 h-4 text-[#adc6ff] shrink-0" />
                     <div className="flex items-center justify-between flex-1">
                       <span>Connection & Low Data Mode</span>
                       {isLowDataActive(networkSettings) && (
@@ -467,9 +629,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     setShowCredsModal(true);
                     setShowMenu(false);
                   }}
-                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#dae2fd] hover:bg-[#222a3d] flex items-center gap-2.5 cursor-pointer"
+                  className="w-full min-h-[48px] px-4 py-3 text-xs text-left font-medium text-[#dae2fd] hover:bg-[#222a3d] flex items-center gap-3 cursor-pointer"
                 >
-                  <KeyRound className="w-4 h-4 text-[#c2c6d6]" />
+                  <KeyRound className="w-4 h-4 text-[#c2c6d6] shrink-0" />
                   <span>Room Credentials & PIN</span>
                 </button>
 
@@ -480,9 +642,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       onClearConversation();
                     }
                   }}
-                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#ffb786] hover:bg-[#222a3d] flex items-center gap-2.5 cursor-pointer"
+                  className="w-full min-h-[48px] px-4 py-3 text-xs text-left font-medium text-[#ffb786] hover:bg-[#222a3d] flex items-center gap-3 cursor-pointer"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-4 h-4 shrink-0" />
                   <span>Clear Conversation (Both)</span>
                 </button>
 
@@ -495,9 +657,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       onCloseRoom();
                     }
                   }}
-                  className="w-full px-4 py-2.5 text-xs text-left font-medium text-[#ffb4ab] hover:bg-[#93000a]/20 flex items-center gap-2.5 cursor-pointer"
+                  className="w-full min-h-[48px] px-4 py-3 text-xs text-left font-medium text-[#ffb4ab] hover:bg-[#93000a]/20 flex items-center gap-3 cursor-pointer"
                 >
-                  <AlertTriangle className="w-4 h-4" />
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>Close & Burn Room</span>
                 </button>
               </div>
@@ -728,122 +890,228 @@ export const ChatView: React.FC<ChatViewProps> = ({
         <QuickRepliesBar onSelectQuickReply={(reply) => setInputText(reply)} />
       </div>
 
-      {/* Voice Recording Active HUD */}
+      {/* Voice Recording Active HUD (Phase 4 Specification) */}
       {isRecording && (
-        <div className="px-4 py-2 bg-[#171f33]/90 border-t border-white/10 flex items-center justify-between z-40">
-          <div className="flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-[#ffb4ab] animate-ping" />
-            <span className="font-mono text-sm text-[#ffb4ab]">
-              Recording {formatDuration(recordingSeconds)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={cancelRecording}
-              className="px-3 py-1.5 rounded-full bg-[#222a3d] text-xs text-[#ffb4ab] hover:bg-[#93000a]/30 cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={stopRecording}
-              className="px-4 py-1.5 rounded-full bg-[#adc6ff] text-[#002e6a] text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-            >
-              <Square className="w-3.5 h-3.5 fill-current" />
-              <span>Finish</span>
-            </button>
+        <div className="w-full px-3 sm:px-4 py-3 bg-[#131b2e] border-t border-[#adc6ff]/20 z-40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="max-w-4xl mx-auto flex flex-col gap-2.5">
+            {/* Top Control & Status Row */}
+            <div className="flex items-center justify-between">
+              {/* Cancel Button */}
+              <button
+                type="button"
+                onClick={cancelRecording}
+                className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#2d3449] hover:bg-[#93000a]/40 text-[#ffb4ab] flex items-center justify-center transition-all cursor-pointer shadow-sm active:scale-95"
+                title="Cancel Recording"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Status & Elapsed Timer */}
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#222a3d]/80 border border-white/5">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping inline-block" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#ffb4ab]">Recording</span>
+                <span className="font-mono text-sm font-bold text-white ml-1">
+                  {formatDuration(recordingSeconds)}
+                </span>
+              </div>
+
+              {/* Action Buttons: Finish / Preview and Direct Send */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  className="area-tap min-h-[48px] px-4 py-2.5 rounded-full bg-[#2d3449] hover:bg-[#3d465f] text-[#dae2fd] text-xs font-medium flex items-center gap-2 transition-all cursor-pointer active:scale-95 border border-white/10"
+                  title="Finish & Preview"
+                >
+                  <Square className="w-4 h-4 fill-current text-[#adc6ff]" />
+                  <span>Preview</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDirectSendRecording}
+                  className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#adc6ff] hover:brightness-110 text-[#002e6a] flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md shadow-[#adc6ff]/20"
+                  title="Send Immediately"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Center Live Waveform Visualizer */}
+            <div className="w-full h-10 bg-[#0b1326]/60 rounded-xl px-4 flex items-center justify-center gap-1.5 border border-white/5 overflow-hidden">
+              {liveWaveform.map((vol, idx) => (
+                <div
+                  key={idx}
+                  className="w-1.5 rounded-full bg-[#adc6ff] transition-all duration-75"
+                  style={{
+                    height: `${Math.max(15, Math.min(100, vol * 100))}%`,
+                    opacity: 0.4 + vol * 0.6,
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Voice Preview HUD */}
-      {voicePreviewData && (
-        <div className="px-4 py-3 bg-[#171f33] border-t border-white/10 flex items-center justify-between z-40">
-          <div className="flex items-center gap-2 flex-1 mr-3">
-            <Mic className="w-4 h-4 text-[#adc6ff]" />
-            <span className="text-xs font-mono text-[#dae2fd]">
-              Voice Note Ready ({formatDuration(voicePreviewData.duration)})
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
+      {/* Voice Preview HUD (Phase 4 Specification) */}
+      {voicePreviewData && !isRecording && (
+        <div className="w-full px-3 sm:px-4 py-3 bg-[#131b2e] border-t border-[#adc6ff]/30 z-40 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+            {/* Discard / Delete Button */}
             <button
               type="button"
-              onClick={() => setVoicePreviewData(null)}
-              className="px-3 py-1.5 rounded-full bg-[#222a3d] text-xs text-[#c2c6d6] hover:text-white cursor-pointer"
+              onClick={() => {
+                triggerHaptic('light');
+                setVoicePreviewData(null);
+              }}
+              className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#2d3449] hover:bg-[#93000a]/40 text-[#ffb4ab] flex items-center justify-center flex-shrink-0 transition-all cursor-pointer active:scale-95"
+              title="Delete Voice Note"
             >
-              Discard
+              <Trash2 className="w-5 h-5" />
             </button>
+
+            {/* Play/Pause Button */}
+            <button
+              type="button"
+              onClick={togglePreviewPlayback}
+              className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#adc6ff] text-[#002e6a] flex items-center justify-center flex-shrink-0 hover:brightness-110 transition-all cursor-pointer active:scale-90 shadow-md"
+              title={isPreviewPlaying ? 'Pause Preview' : 'Play Preview'}
+            >
+              {isPreviewPlaying ? (
+                <Pause className="w-5 h-5 fill-current" />
+              ) : (
+                <Play className="w-5 h-5 fill-current ml-0.5" />
+              )}
+            </button>
+
+            {/* Interactive Progress Scrubber & Duration */}
+            <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
+              <div
+                className="w-full min-h-[32px] flex items-center cursor-pointer group"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                  handleSeekPreview(percent);
+                }}
+              >
+                <div className="w-full h-2.5 bg-[#2d3449] rounded-full relative flex items-center">
+                  {/* Progress fill */}
+                  <div
+                    className="h-full bg-[#adc6ff] rounded-full"
+                    style={{
+                      width: `${
+                        voicePreviewData.duration > 0
+                          ? (previewCurrentTime / voicePreviewData.duration) * 100
+                          : 0
+                      }%`,
+                    }}
+                  />
+                  {/* Playhead Dot */}
+                  <div
+                    className="w-4 h-4 rounded-full bg-white shadow-md absolute -ml-2 transition-transform group-hover:scale-125"
+                    style={{
+                      left: `${
+                        voicePreviewData.duration > 0
+                          ? (previewCurrentTime / voicePreviewData.duration) * 100
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Timestamp Indicator */}
+              <div className="flex items-center justify-between text-[11px] font-mono text-[#c2c6d6] px-0.5">
+                <span>{formatDuration(Math.floor(previewCurrentTime))}</span>
+                <span>{formatDuration(voicePreviewData.duration)}</span>
+              </div>
+            </div>
+
+            {/* Send Voice Button */}
             <button
               type="button"
               onClick={handleSendVoice}
-              className="px-4 py-1.5 rounded-full bg-[#adc6ff] text-[#002e6a] text-xs font-semibold flex items-center gap-1 cursor-pointer"
+              className="area-tap min-h-[48px] px-5 py-2.5 rounded-full bg-[#adc6ff] text-[#002e6a] text-xs font-bold flex items-center gap-2 flex-shrink-0 hover:brightness-110 active:scale-95 transition-all shadow-md shadow-[#adc6ff]/20 cursor-pointer"
+              title="Send Voice Note"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>Send Voice</span>
+              <Send className="w-4 h-4" />
+              <span className="hidden sm:inline">Send</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Chat Composer Bar (Design Matching Specifications) */}
-      <div className="w-full px-4 py-3 bg-[#0b1326]/90 backdrop-blur-xl z-40 border-t border-white/5">
-        <form onSubmit={handleSendText} className="flex items-end gap-2 max-w-4xl mx-auto">
-          {/* Plus / Media Menu Button */}
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            id="chat-attach-btn"
-            className="w-12 h-12 rounded-full bg-[#222a3d] flex items-center justify-center flex-shrink-0 hover:bg-[#31394d] transition-colors text-[#dae2fd] shadow-sm cursor-pointer"
-            title="Attach Ephemeral Photo"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-
-          {/* Textarea Composer Container */}
-          <div className="flex-1 bg-[#2d3449] rounded-3xl min-h-[48px] flex items-center px-4 py-1 shadow-inner relative focus-within:ring-2 focus-within:ring-[#adc6ff]/50 transition-all">
-            <textarea
-              value={inputText}
-              onChange={handleInputChange}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendText();
-                }
+      {/* Chat Composer Bar (Optimized for Mobile with Safe-Area & Virtual Keyboard) */}
+      {!isRecording && !voicePreviewData && (
+        <div className="w-full px-3 sm:px-4 pt-2 pb-safe bg-[#0b1326]/95 backdrop-blur-xl z-40 border-t border-white/5 shadow-[0_-4px_20px_rgba(0,0,0,0.5)]">
+          <form onSubmit={handleSendText} className="flex items-end gap-2 max-w-4xl mx-auto mb-1">
+            {/* Plus / Media Menu Button */}
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                fileInputRef.current?.click();
               }}
-              placeholder="Type a message..."
-              rows={1}
-              id="chat-textarea-input"
-              className="w-full bg-transparent text-[#dae2fd] text-base placeholder-[#c2c6d6] outline-none resize-none max-h-32 py-3"
-              style={{ minHeight: '48px' }}
-            />
+              id="chat-attach-btn"
+              className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#222a3d] flex items-center justify-center flex-shrink-0 hover:bg-[#31394d] active:scale-95 transition-all text-[#dae2fd] shadow-sm cursor-pointer"
+              title="Attach Ephemeral Photo"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
 
-            {/* Mic button embedded in composer */}
-            {!inputText.trim() && (
-              <button
-                type="button"
-                onClick={startRecording}
-                id="mic-record-btn"
-                className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[#c2c6d6] hover:text-[#adc6ff] transition-colors absolute right-2 bottom-2 cursor-pointer"
-                title="Record Voice Note"
-              >
-                <Mic className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+            {/* Textarea Composer Container */}
+            <div className="flex-1 bg-[#2d3449] rounded-3xl min-h-[48px] flex items-center px-3.5 sm:px-4 py-0.5 shadow-inner focus-within:ring-2 focus-within:ring-[#adc6ff]/50 transition-all">
+              <textarea
+                value={inputText}
+                onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendText();
+                  }
+                }}
+                placeholder="Type a message..."
+                rows={1}
+                id="chat-textarea-input"
+                className="w-full bg-transparent text-[#dae2fd] text-base placeholder-[#c2c6d6] outline-none resize-none max-h-28 sm:max-h-32 py-2.5 leading-relaxed"
+                style={{ minHeight: '44px' }}
+              />
 
-          {/* Send Button */}
-          <button
-            type="submit"
-            disabled={!inputText.trim()}
-            id="send-chat-btn"
-            className="w-12 h-12 rounded-full bg-[#adc6ff] flex items-center justify-center flex-shrink-0 hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-[#adc6ff]/20 text-[#002e6a] cursor-pointer disabled:opacity-40"
-            title="Send Message"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </form>
-      </div>
+              {/* Mic button embedded in composer container as distinct inline flex item to prevent overlap */}
+              {!inputText.trim() && (
+                <button
+                  type="button"
+                  onPointerDown={handleMicPointerDown}
+                  onPointerUp={handleMicPointerUp}
+                  onClick={() => {
+                    if (!isRecording) {
+                      triggerHaptic('medium');
+                      startRecording();
+                    }
+                  }}
+                  id="mic-record-btn"
+                  className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] -mr-2 my-auto rounded-full flex items-center justify-center flex-shrink-0 text-[#c2c6d6] hover:text-[#adc6ff] active:scale-90 transition-all cursor-pointer select-none"
+                  title="Hold or Tap to Record Voice Note"
+                >
+                  <Mic className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            {/* Send Button */}
+            <button
+              type="submit"
+              disabled={!inputText.trim()}
+              id="send-chat-btn"
+              className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#adc6ff] flex items-center justify-center flex-shrink-0 hover:brightness-110 active:scale-90 transition-all shadow-lg shadow-[#adc6ff]/20 text-[#002e6a] cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+              title="Send Message"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Disappearing Photo Modal */}
       {selectedPhoto && (
@@ -870,7 +1138,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
               <button
                 onClick={() => setShowTimerModal(false)}
-                className="p-1.5 rounded-full text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#222a3d] transition-colors cursor-pointer"
+                className="w-12 h-12 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#222a3d] transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -890,7 +1158,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       }
                       setShowTimerModal(false);
                     }}
-                    className={`w-full flex items-center justify-between p-3.5 rounded-2xl text-left transition-all cursor-pointer border ${
+                    className={`w-full min-h-[48px] flex items-center justify-between p-3.5 rounded-2xl text-left transition-all cursor-pointer border ${
                       isSelected
                         ? 'border-[#adc6ff] bg-[#171f33] text-white shadow-md'
                         : 'border-white/5 bg-[#0b1326] text-[#c2c6d6] hover:border-white/20 hover:bg-[#171f33]'
@@ -925,7 +1193,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
               <button
                 onClick={() => setShowCredsModal(false)}
-                className="p-1.5 rounded-full text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#222a3d] cursor-pointer"
+                className="w-12 h-12 min-w-[48px] min-h-[48px] flex items-center justify-center rounded-full text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#222a3d] cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>

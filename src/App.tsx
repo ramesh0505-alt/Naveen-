@@ -16,7 +16,17 @@ import { SettingsModal } from './components/SettingsModal';
 import { ProfileView } from './components/ProfileView';
 import { WebRTCCallManager } from './utils/webrtc';
 import { SoundEffects, unlockAudioContext } from './utils/audio';
-import { triggerHaptic, isMobileDevice } from './utils/helpers';
+import {
+  triggerHaptic,
+  isMobileDevice,
+  hapticIncomingMessage,
+  hapticMessageSent,
+  startHapticCallAlert,
+  stopHapticCallAlert,
+  hapticCallConnected,
+  hapticCallEnded,
+  hapticBurnEffect,
+} from './utils/helpers';
 import { apiRequest, getWebSocketUrl } from './utils/api';
 import {
   NetworkSettings,
@@ -157,10 +167,12 @@ export default function App() {
           setCallError(null);
           SoundEffects.stopRingtone();
           SoundEffects.playCallConnected();
+          hapticCallConnected();
         } else if (state === 'failed') {
           setCallError('Audio connection could not be established. Please try again.');
           SoundEffects.stopRingtone();
           SoundEffects.playCallEnded();
+          hapticCallEnded();
           setTimeout(() => handleEndCall(true), 2500);
         } else if (state === 'disconnected') {
           handleEndCall(false);
@@ -368,14 +380,17 @@ export default function App() {
               return [...prev, data.message];
             });
             SoundEffects.playMessageReceived();
+            hapticIncomingMessage();
           } else if (data.type === 'message:cleared') {
             setMessages([]);
+            triggerHaptic('heavy');
           } else if (data.type === 'message:burned') {
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === data.messageId ? { ...m, isBurned: true, mediaReference: undefined, textContent: undefined } : m
               )
             );
+            hapticBurnEffect();
           } else if (data.type === 'message:viewed') {
             setMessages((prev) =>
               prev.map((m) =>
@@ -470,11 +485,14 @@ export default function App() {
       setCallError(null);
       setCallState('RINGING');
       SoundEffects.startIncomingRingtone();
+      startHapticCallAlert();
     } else if (payload.type === 'call:accept') {
       // Peer accepted, create WebRTC offer
       setCallState('CONNECTED');
       setCallError(null);
       SoundEffects.stopRingtone();
+      stopHapticCallAlert();
+      hapticCallConnected();
       try {
         await webrtcRef.current.startCall(roomCode, role);
       } catch (err: any) {
@@ -483,7 +501,9 @@ export default function App() {
       }
     } else if (payload.type === 'call:reject') {
       SoundEffects.stopRingtone();
+      stopHapticCallAlert();
       SoundEffects.playCallEnded();
+      hapticCallEnded();
       setCallState('REJECTED');
       setTimeout(() => setCallState('IDLE'), 2500);
     } else if (payload.type === 'call:offer' && payload.sdp) {
@@ -507,6 +527,7 @@ export default function App() {
         console.error('Error handling ice candidate:', err);
       }
     } else if (payload.type === 'call:end') {
+      stopHapticCallAlert();
       handleEndCall(false);
     }
   };
@@ -519,6 +540,7 @@ export default function App() {
     }
     setCallError(null);
     unlockAudioContext();
+    triggerHaptic('impact');
     try {
       if (webrtcRef.current) {
         await webrtcRef.current.acquireLocalAudio();
@@ -541,6 +563,8 @@ export default function App() {
   const handleAcceptCall = async () => {
     unlockAudioContext();
     SoundEffects.stopRingtone();
+    stopHapticCallAlert();
+    hapticCallConnected();
     setCallError(null);
     try {
       if (webrtcRef.current) {
@@ -567,6 +591,8 @@ export default function App() {
 
   const handleRejectCall = () => {
     SoundEffects.stopRingtone();
+    stopHapticCallAlert();
+    hapticCallEnded();
     setCallState('IDLE');
     setCallError(null);
     sendCallSignal({
@@ -578,7 +604,9 @@ export default function App() {
 
   const handleEndCall = (sendHangupSignal: boolean = true) => {
     SoundEffects.stopRingtone();
+    stopHapticCallAlert();
     SoundEffects.playCallEnded();
+    hapticCallEnded();
     setCallState('ENDED');
 
     if (sendHangupSignal) {
@@ -602,6 +630,7 @@ export default function App() {
   };
 
   const handleToggleMute = () => {
+    triggerHaptic('light');
     if (webrtcRef.current) {
       const nextMuted = !isMuted;
       webrtcRef.current.setMuted(nextMuted);
@@ -610,6 +639,7 @@ export default function App() {
   };
 
   const handleToggleSpeaker = () => {
+    triggerHaptic('light');
     if (webrtcRef.current) {
       const nextSpeaker = !isSpeaker;
       webrtcRef.current.setSpeakerphone(nextSpeaker);
@@ -628,6 +658,7 @@ export default function App() {
     burnOnRead?: boolean;
   }) => {
     try {
+      hapticMessageSent();
       const data = await apiRequest(`/api/rooms/${roomCode}/messages`, {
         method: 'POST',
         headers: {

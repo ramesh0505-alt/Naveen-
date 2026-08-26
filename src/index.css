@@ -70,11 +70,44 @@
   background: #4d8eff;
 }
 
+html, body {
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Safe area padding utilities for modern iOS & Android devices */
 .pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: max(env(safe-area-inset-top, 0px), 0px);
 }
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+}
+.pl-safe {
+  padding-left: max(env(safe-area-inset-left, 0px), 0px);
+}
+.pr-safe {
+  padding-right: max(env(safe-area-inset-right, 0px), 0px);
+}
+
+/* Mobile height support utilizing dynamic viewport height (dvh) */
+.min-h-screen-dvh {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+.h-screen-dvh {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Mobile button active and touch feedback */
+.touch-press {
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.touch-press:active {
+  transform: scale(0.96);
+  filter: brightness(0.92);
 }
 
 .pulsate {
@@ -160,5 +193,29 @@
 
   .animate-pulse-glow {
     animation: pulseGlow 4s ease-in-out infinite;
+  }
+
+  /* Physically enforce 48x48px touch target for mobile accessibility */
+  .area-tap {
+    position: relative;
+    min-width: 48px;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+  }
+
+  .area-tap::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 48px;
+    min-height: 48px;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto;
   }
 }
