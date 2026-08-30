@@ -1,5 +1,4 @@
 import React from 'react';
-import { Users, Lock, LogIn, ArrowLeft } from 'lucide-react';
 
 interface RoomFullViewProps {
   roomCode?: string;
@@ -11,42 +10,41 @@ export const RoomFullView: React.FC<RoomFullViewProps> = ({
   onGoHome,
 }) => {
   return (
-    <div className="flex flex-col w-full h-full min-h-[calc(100vh-140px)] items-center justify-center p-4 sm:p-8 animate-fade-in font-sans">
-      <div className="w-full max-w-sm flex flex-col items-center text-center space-y-6">
-        {/* Icon Container with glowing background */}
-        <div className="relative w-24 h-24 flex items-center justify-center rounded-full bg-[#2d3449] shadow-2xl mb-2 group">
-          <div className="absolute inset-0 rounded-full bg-[#4d8eff]/20 blur-xl group-hover:bg-[#4d8eff]/30 transition-colors duration-500"></div>
-          <Users className="w-12 h-12 text-[#adc6ff] relative z-10" />
+    <div className="flex flex-col w-full h-full min-h-[calc(100vh-140px)] items-center justify-center p-6 sm:p-8 animate-fade-in select-none">
+      <div className="w-full max-w-sm flex flex-col items-center text-center space-y-5 bg-[#121419] border border-[#272A31] rounded-[28px] p-7 shadow-2xl">
+        {/* Icon Container */}
+        <div className="relative w-16 h-16 flex items-center justify-center rounded-full bg-[#181B21] border border-[#272A31] shadow-xl mb-1">
+          <span className="material-symbols-outlined text-[#E8D8B8] text-[30px]">group</span>
 
           {/* Badge */}
-          <div className="absolute -bottom-2 -right-2 bg-[#93000a] text-[#ffdad6] px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg backdrop-blur-md border border-white/10 text-xs font-mono">
-            <Lock className="w-3.5 h-3.5" />
-            <span className="font-semibold">2/2</span>
+          <div className="absolute -bottom-1 -right-1 bg-[#FF5C5C] text-[#0B0C0F] px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg text-[10px] font-mono font-bold">
+            <span className="material-symbols-outlined text-[11px]">lock</span>
+            <span>2/2</span>
           </div>
         </div>
 
         {/* Typography */}
-        <div className="space-y-2 px-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#222a3d] border border-white/5 text-[11px] font-mono text-[#adc6ff] mb-1">
-            <span>ROOM LIMIT REACHED</span>
-            {roomCode && <span className="text-[#c2c6d6]">#{roomCode}</span>}
+        <div className="space-y-1.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-[#181B21] border border-[#272A31] font-mono text-[10px] text-[#E8D8B8] mb-1">
+            <span>CAPACITY REACHED</span>
+            {roomCode && <span className="text-[#F5F3EE]">#{roomCode}</span>}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-semibold text-[#dae2fd] tracking-tight">
-            Private Room Full
+          <h1 className="font-editorial text-2xl text-[#F5F3EE] tracking-tight">
+            Room Full
           </h1>
-          <p className="text-sm text-[#c2c6d6] max-w-[300px] mx-auto leading-relaxed">
-            This sanctuary is strictly limited to two participants. The private room you are trying to access is currently occupied.
+          <p className="font-body-sm text-xs text-[#9B9DA3] max-w-[260px] mx-auto leading-relaxed">
+            This space is strictly restricted to two participants. The session is currently at maximum capacity.
           </p>
         </div>
 
         {/* Actions */}
-        <div className="pt-4 w-full">
+        <div className="pt-1 w-full">
           <button
             onClick={onGoHome}
             id="room-full-return-btn"
-            className="w-full bg-[#adc6ff] text-[#002e6a] font-semibold text-base rounded-full py-4 px-6 flex items-center justify-center gap-2 hover:bg-[#adc6ff]/90 transition-all active:scale-95 shadow-[0_8px_32px_rgba(77,142,255,0.25)] cursor-pointer"
+            className="w-full bg-[#E8D8B8] text-[#121419] font-label-md font-bold text-xs rounded-full py-3 px-5 flex items-center justify-center gap-1.5 hover:bg-[#F0E3C8] transition-all active:scale-95 shadow-md cursor-pointer"
           >
-            <LogIn className="w-5 h-5" />
+            <span className="material-symbols-outlined text-[16px]">home</span>
             <span>Return to Entrance</span>
           </button>
         </div>

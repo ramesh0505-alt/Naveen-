@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, Volume2, Mic, Activity, Flame, Download } from 'lucide-react';
 import { formatDuration, triggerHaptic } from '../utils/helpers';
 import { extractWaveformData, generateFallbackWaveform } from '../utils/waveform';
 import { VoiceWaveformCanvas } from './VoiceWaveformCanvas';
@@ -27,18 +26,17 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
   const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [isDownloaded, setIsDownloaded] = useState(!deferAutoDownload);
   const [waveform, setWaveform] = useState<number[]>(() =>
-    generateFallbackWaveform(42, audioSrc || `voice-note-${duration}`)
+    generateFallbackWaveform(36, audioSrc || `voice-note-${duration}`)
   );
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Extract real waveform and initialize audio only when downloaded/loaded
   useEffect(() => {
     if (!audioSrc || !isDownloaded) return;
 
     let isMounted = true;
 
-    extractWaveformData(audioSrc, 42)
+    extractWaveformData(audioSrc, 36)
       .then((peaks) => {
         if (isMounted && peaks && peaks.length > 0) {
           setWaveform(peaks);
@@ -75,7 +73,6 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
     };
   }, [audioSrc, isDownloaded]);
 
-  // Sync playback rate
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackRate;
@@ -85,7 +82,6 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
   const handleDownloadAndPlay = () => {
     triggerHaptic('medium');
     setIsDownloaded(true);
-    // Slight tick to allow audio to initialize
     setTimeout(() => {
       if (audioRef.current) {
         onPlay?.();
@@ -138,72 +134,35 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
 
   return (
     <div
-      className={`p-3 sm:p-3.5 rounded-2xl border transition-all duration-200 min-w-[260px] sm:min-w-[310px] max-w-sm shadow-md select-none ${
+      className={`p-3 rounded-[18px] border transition-all duration-200 min-w-[240px] sm:min-w-[280px] max-w-sm shadow-sm select-none ${
         isMe
-          ? 'bg-[#181818] border-[#303030] text-white rounded-tr-xs'
-          : 'bg-[#121212] border-[#252525] text-[#EDEDED] rounded-tl-xs'
+          ? 'bg-[#E8D8B8] text-[#121419] border-[#E8D8B8] rounded-br-[4px]'
+          : 'bg-[#181B21] text-[#F5F3EE] border-[#272A31] rounded-bl-[4px]'
       }`}
     >
-      {/* Top Micro-Header */}
-      <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pb-2 mb-1 border-b border-white/5">
-        <div className="flex items-center gap-1.5">
-          <div
-            className={`w-4 h-4 rounded-full flex items-center justify-center ${
-              isMe ? 'bg-zinc-800 text-white' : 'bg-emerald-950/80 text-emerald-400'
-            }`}
-          >
-            <Mic className="w-2.5 h-2.5" />
-          </div>
-          <span className="font-semibold tracking-wide text-zinc-300">
-            {isMe ? 'Voice Note Sent' : 'Voice Note'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {burnOnRead && (
-            <span className="text-amber-400 font-semibold flex items-center gap-0.5 text-[9px] bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-800/60">
-              <Flame className="w-2.5 h-2.5" />
-              <span>Burn</span>
-            </span>
-          )}
-          <span className="text-[9px] text-zinc-500 uppercase tracking-widest font-mono">
-            {isPlaying ? 'Playing' : 'Audio 48kHz'}
-          </span>
-        </div>
-      </div>
-
-      {/* Center Waveform & Playback Controls */}
-      <div className="flex items-center gap-3">
-        {/* Play / Download Button */}
+      {/* Waveform & Play Controls */}
+      <div className="flex items-center gap-2.5">
+        {/* Play Button */}
         <button
           onClick={togglePlay}
           id="voice-play-toggle-btn"
-          className={`area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center transition-all active:scale-90 cursor-pointer flex-shrink-0 shadow-lg ${
-            !isDownloaded
-              ? 'bg-amber-400 text-black hover:bg-amber-300 ring-2 ring-amber-400/50'
-              : isMe
-              ? 'bg-white text-black hover:bg-zinc-200'
-              : 'bg-emerald-500 text-black hover:bg-emerald-400'
-          } ${isPlaying ? 'ring-2 ring-emerald-400/50 ring-offset-2 ring-offset-black' : ''}`}
-          aria-label={
-            !isDownloaded
-              ? 'Download voice message'
-              : isPlaying
-              ? 'Pause voice message'
-              : 'Play voice message'
-          }
-          title={!isDownloaded ? 'Tap to download audio (Low Data Mode)' : undefined}
+          className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer flex-shrink-0 ${
+            isMe
+              ? 'bg-[#121419] text-[#E8D8B8] hover:bg-[#181B21]'
+              : 'bg-[#E8D8B8] text-[#121419] hover:bg-[#F0E3C8]'
+          }`}
+          aria-label={isPlaying ? 'Pause voice message' : 'Play voice message'}
         >
           {!isDownloaded ? (
-            <Download className="w-5 h-5 text-black animate-bounce" />
+            <span className="material-symbols-outlined text-[18px]">download</span>
           ) : isPlaying ? (
-            <Pause className="w-5 h-5 fill-current" />
+            <span className="material-symbols-outlined text-[18px]">pause</span>
           ) : (
-            <Play className="w-5 h-5 fill-current ml-0.5" />
+            <span className="material-symbols-outlined text-[18px] ml-0.5">play_arrow</span>
           )}
         </button>
 
-        {/* Visual Static & Interactive Waveform Canvas */}
+        {/* Waveform */}
         <div className="flex-1 flex flex-col justify-center min-w-0">
           <VoiceWaveformCanvas
             waveform={waveform}
@@ -211,42 +170,43 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
             isPlaying={isPlaying}
             isMe={isMe}
             onSeek={handleSeekPercent}
-            height={32}
+            height={26}
             totalDuration={totalDuration}
           />
         </div>
 
-        {/* Speed Multiplier Pill */}
+        {/* Playback speed */}
         <button
           type="button"
           onClick={cyclePlaybackRate}
-          className="area-tap min-h-[48px] min-w-[48px] text-[11px] font-mono px-2.5 py-2 rounded-xl border border-zinc-700/80 hover:border-zinc-500 bg-zinc-900 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center justify-center flex-shrink-0 active:scale-95 shadow-xs"
-          title="Toggle playback speed (1x, 1.5x, 2x)"
+          className={`text-[10px] font-mono px-2 py-1 rounded-full border transition-all cursor-pointer flex items-center justify-center flex-shrink-0 ${
+            isMe
+              ? 'border-[#121419]/30 hover:border-[#121419] bg-[#121419]/10 text-[#121419]'
+              : 'border-[#272A31] hover:border-[#E8D8B8] bg-[#121419] text-[#9B9DA3] hover:text-[#F5F3EE]'
+          }`}
         >
           {playbackRate}x
         </button>
       </div>
 
-      {/* Timestamp & Progress Metadata Footer */}
-      <div className="flex items-center justify-between text-[11px] font-mono pt-2 text-zinc-400 border-t border-white/5 mt-1.5">
-        <div className="flex items-center gap-1.5 text-zinc-300">
-          <Volume2 className="w-3.5 h-3.5 text-zinc-500" />
-          <span className="font-semibold text-white">
-            {formatDuration(Math.floor(currentTime))}
-          </span>
-          <span className="text-zinc-500 font-normal">/ {formatDuration(Math.floor(totalDuration))}</span>
+      {/* Footer Info */}
+      <div
+        className={`flex items-center justify-between text-[10px] font-mono pt-1.5 mt-1 border-t ${
+          isMe ? 'border-[#121419]/15 text-[#121419]/70' : 'border-[#272A31] text-[#9B9DA3]'
+        }`}
+      >
+        <div className="flex items-center gap-1">
+          <span>{formatDuration(Math.floor(currentTime))}</span>
+          <span>/</span>
+          <span>{formatDuration(Math.floor(totalDuration))}</span>
         </div>
 
-        <div className="flex items-center gap-1 text-[10px] text-zinc-500">
-          {!isDownloaded ? (
-            <span className="text-amber-400/90 font-medium">Tap to load audio</span>
-          ) : (
-            <>
-              <Activity className={`w-3 h-3 ${isPlaying ? 'text-emerald-400 animate-pulse' : 'text-zinc-600'}`} />
-              <span>{isPlaying ? 'Streaming' : 'Static Waveform'}</span>
-            </>
-          )}
-        </div>
+        {burnOnRead && (
+          <span className={`font-semibold flex items-center gap-0.5 ${isMe ? 'text-[#920418]' : 'text-[#FF5C5C]'}`}>
+            <span className="material-symbols-outlined text-[10px]">local_fire_department</span>
+            <span>Burn on read</span>
+          </span>
+        )}
       </div>
     </div>
   );

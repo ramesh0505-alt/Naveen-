@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Settings2, Trash2, RotateCcw, X, Check, MessageSquarePlus, Sparkles } from 'lucide-react';
 import { SoundEffects } from '../utils/audio';
 
 const STORAGE_KEY = 'privy_quick_replies_v1';
@@ -10,7 +9,7 @@ export const DEFAULT_QUICK_REPLIES: string[] = [
   '🔒 Understood',
   '⏱️ Give me 5 mins',
   '📞 Ready for call',
-  '🔥 Delete after reading',
+  '🔥 Burn after reading',
   '✅ Got it, thanks!',
   '🤐 Keep confidential',
 ];
@@ -100,9 +99,9 @@ export const QuickRepliesBar: React.FC<QuickRepliesBarProps> = ({
   return (
     <>
       {/* Quick Replies Horizontal Bar */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50/90 dark:bg-zinc-900/60 border-t border-zinc-200/70 dark:border-zinc-800/80 overflow-x-auto no-scrollbar select-none">
-        <div className="flex items-center gap-1 text-[11px] font-mono text-zinc-400 dark:text-zinc-500 flex-shrink-0 pl-0.5 pr-1">
-          <Sparkles className="w-3 h-3 text-amber-500/80" />
+      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B0C0F] border-t border-[#272A31] overflow-x-auto no-scrollbar select-none">
+        <div className="flex items-center gap-1 text-[11px] font-mono text-[#6E7179] flex-shrink-0 pl-0.5 pr-1">
+          <span className="material-symbols-outlined text-[13px] text-[#E8D8B8]">bolt</span>
           <span className="hidden sm:inline">Quick:</span>
         </div>
 
@@ -113,7 +112,7 @@ export const QuickRepliesBar: React.FC<QuickRepliesBarProps> = ({
               type="button"
               disabled={disabled}
               onClick={() => handleTriggerReply(reply)}
-              className="flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-medium bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700/80 shadow-xs hover:border-emerald-500/50 dark:hover:border-emerald-500/50 active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1"
+              className="flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-label-md bg-[#181B21] hover:bg-[#272A31] text-[#F5F3EE] border border-[#272A31] hover:border-[#E8D8B8]/50 active:scale-95 transition-all duration-150 cursor-pointer flex items-center gap-1"
               title="Click to send immediately"
             >
               <span>{reply}</span>
@@ -126,37 +125,37 @@ export const QuickRepliesBar: React.FC<QuickRepliesBarProps> = ({
           type="button"
           onClick={() => setShowConfigModal(true)}
           id="configure-quick-replies-btn"
-          className="flex-shrink-0 p-1.5 rounded-full text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+          className="flex-shrink-0 w-7 h-7 rounded-full text-[#9B9DA3] hover:text-[#F5F3EE] hover:bg-[#181B21] flex items-center justify-center transition-colors cursor-pointer"
           title="Configure Quick Replies"
         >
-          <Settings2 className="w-3.5 h-3.5" />
+          <span className="material-symbols-outlined text-[15px]">tune</span>
         </button>
       </div>
 
       {/* Quick Replies Configuration Modal */}
       {showConfigModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in font-sans">
-          <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-2xl p-5 text-zinc-900 dark:text-zinc-100 animate-scale-up">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B0C0F]/90 backdrop-blur-xl animate-fade-in select-none">
+          <div className="w-full max-w-md bg-[#121419] border border-[#272A31] rounded-[24px] shadow-2xl p-5 text-[#F5F3EE] animate-scale-up">
+            <div className="flex items-center justify-between pb-3 border-b border-[#272A31]">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                  <MessageSquarePlus className="w-5 h-5" />
+                <div className="w-8 h-8 rounded-full bg-[#181B21] border border-[#272A31] flex items-center justify-center text-[#E8D8B8]">
+                  <span className="material-symbols-outlined text-[17px]">chat</span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
-                    Customize Quick Replies
+                  <h3 className="font-headline-md text-sm font-bold text-[#F5F3EE]">
+                    Quick Replies
                   </h3>
-                  <p className="text-[11px] text-zinc-500 font-mono">
-                    Instant one-tap responses saved locally
+                  <p className="font-body-sm text-[11px] text-[#9B9DA3]">
+                    Instant one-tap messages saved locally
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowConfigModal(false)}
-                className="p-1.5 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                className="w-7 h-7 rounded-full bg-[#181B21] text-[#9B9DA3] hover:text-[#F5F3EE] flex items-center justify-center transition-colors cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <span className="material-symbols-outlined text-[16px]">close</span>
               </button>
             </div>
 
@@ -166,16 +165,16 @@ export const QuickRepliesBar: React.FC<QuickRepliesBarProps> = ({
                 type="text"
                 value={newReplyText}
                 onChange={(e) => setNewReplyText(e.target.value)}
-                placeholder="Type a new quick reply (e.g. 🏃 On my way)..."
+                placeholder="Type a new reply (e.g. 🏃 On my way)..."
                 maxLength={80}
-                className="flex-1 px-3.5 py-2 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
+                className="flex-1 px-3.5 py-2 text-xs bg-[#0B0C0F] border border-[#272A31] rounded-full focus:outline-none focus:border-[#E8D8B8] text-[#F5F3EE] placeholder-[#6E7179]"
               />
               <button
                 type="submit"
                 disabled={!newReplyText.trim()}
-                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-xl flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                className="px-3.5 py-2 bg-[#E8D8B8] hover:bg-[#F0E3C8] disabled:opacity-40 disabled:cursor-not-allowed text-[#121419] text-xs font-label-md font-bold rounded-full flex items-center gap-1 shadow-sm transition-all cursor-pointer"
               >
-                <Plus className="w-4 h-4" />
+                <span className="material-symbols-outlined text-[15px]">add</span>
                 <span>Add</span>
               </button>
             </form>
@@ -183,14 +182,14 @@ export const QuickRepliesBar: React.FC<QuickRepliesBarProps> = ({
             {/* Existing Quick Replies List */}
             <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1 my-2">
               {replies.length === 0 ? (
-                <div className="text-center py-6 text-xs text-zinc-400 font-mono">
+                <div className="text-center py-6 text-xs text-[#6E7179] font-mono">
                   No quick replies configured yet.
                 </div>
               ) : (
                 replies.map((reply, idx) => (
                   <div
                     key={`${reply}-${idx}`}
-                    className="flex items-center justify-between p-2 rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200/70 dark:border-zinc-800 text-xs text-zinc-800 dark:text-zinc-200 group"
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-[#181B21] border border-[#272A31] text-xs text-[#F5F3EE] group"
                   >
                     {editingIndex === idx ? (
                       <div className="flex items-center gap-1.5 flex-1 mr-2">
@@ -203,29 +202,29 @@ export const QuickRepliesBar: React.FC<QuickRepliesBarProps> = ({
                             if (e.key === 'Escape') setEditingIndex(null);
                           }}
                           autoFocus
-                          className="flex-1 px-2.5 py-1 text-xs bg-white dark:bg-zinc-900 border border-emerald-500 rounded-lg focus:outline-none text-zinc-900 dark:text-zinc-100"
+                          className="flex-1 px-2.5 py-1 text-xs bg-[#0B0C0F] border border-[#E8D8B8] rounded-full focus:outline-none text-[#F5F3EE]"
                         />
                         <button
                           type="button"
                           onClick={handleSaveEdit}
-                          className="p-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500 cursor-pointer"
+                          className="w-6 h-6 rounded-full bg-[#E8D8B8] text-[#121419] flex items-center justify-center cursor-pointer"
                           title="Save"
                         >
-                          <Check className="w-3.5 h-3.5" />
+                          <span className="material-symbols-outlined text-[13px]">check</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditingIndex(null)}
-                          className="p-1 rounded-lg bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600 cursor-pointer"
+                          className="w-6 h-6 rounded-full bg-[#272A31] text-[#9B9DA3] flex items-center justify-center cursor-pointer"
                           title="Cancel"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <span className="material-symbols-outlined text-[13px]">close</span>
                         </button>
                       </div>
                     ) : (
                       <div
                         onClick={() => handleStartEdit(idx)}
-                        className="flex-1 truncate pr-2 cursor-pointer font-medium hover:text-emerald-600 dark:hover:text-emerald-400"
+                        className="flex-1 truncate pr-2 cursor-pointer font-label-md hover:text-[#E8D8B8]"
                         title="Click to edit text"
                       >
                         {reply}
@@ -237,10 +236,10 @@ export const QuickRepliesBar: React.FC<QuickRepliesBarProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRemoveReply(idx)}
-                          className="p-1 text-zinc-400 hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                          className="w-6 h-6 text-[#6E7179] hover:text-[#FF5C5C] rounded-full hover:bg-[#FF5C5C]/10 flex items-center justify-center transition-colors cursor-pointer"
                           title="Delete response"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="material-symbols-outlined text-[14px]">delete</span>
                         </button>
                       </div>
                     )}
@@ -250,20 +249,20 @@ export const QuickRepliesBar: React.FC<QuickRepliesBarProps> = ({
             </div>
 
             {/* Footer Actions */}
-            <div className="flex items-center justify-between pt-3 mt-3 border-t border-zinc-100 dark:border-zinc-800 text-xs">
+            <div className="flex items-center justify-between pt-3 mt-3 border-t border-[#272A31] text-xs">
               <button
                 type="button"
                 onClick={handleResetDefaults}
-                className="px-2.5 py-1.5 rounded-xl text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 font-mono text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-full text-[#9B9DA3] hover:text-[#F5F3EE] hover:bg-[#181B21] font-label-md text-[11px] flex items-center gap-1.5 transition-colors cursor-pointer"
               >
-                <RotateCcw className="w-3 h-3" />
+                <span className="material-symbols-outlined text-[13px]">restart_alt</span>
                 <span>Reset Defaults</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setShowConfigModal(false)}
-                className="px-4 py-1.5 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold hover:bg-zinc-800 dark:hover:bg-white/90 transition-colors cursor-pointer"
+                className="px-4 py-1.5 rounded-full bg-[#E8D8B8] text-[#121419] font-label-md font-bold hover:bg-[#F0E3C8] transition-colors cursor-pointer"
               >
                 Done
               </button>

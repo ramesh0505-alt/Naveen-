@@ -359,6 +359,17 @@ export default function App() {
             return;
           }
 
+          if (data.type === 'auth:error') {
+            console.warn('Session verification notice:', data.message);
+            setSessionToken('');
+            setSignalingStatus('disconnected');
+            if (currentScreen === 'CHAT' || currentScreen === 'WAITING' || currentScreen === 'SHARE') {
+              setExpiredReason(data.message || 'Your session has ended or is no longer valid.');
+              setCurrentScreen('EXPIRED');
+            }
+            return;
+          }
+
           if (data.type === 'auth:success') {
             setRole(data.role);
             setRoomInfo(data.roomInfo);
@@ -431,15 +442,17 @@ export default function App() {
         if (pingTimer) clearInterval(pingTimer);
         setPingLatency(null);
         // Automatically reconnect after 1.5s if session is still active
-        if (!isUnmounted && currentScreen !== 'LANDING' && currentScreen !== 'EXPIRED') {
+        if (!isUnmounted && currentScreen !== 'LANDING' && currentScreen !== 'EXPIRED' && roomCode && sessionToken) {
           reconnectCountRef.current += 1;
           setSignalingStatus('reconnecting');
           reconnectTimer = setTimeout(() => {
-            connectWs();
-            loadRoomSession(roomCode, sessionToken);
+            if (roomCode && sessionToken) {
+              connectWs();
+              loadRoomSession(roomCode, sessionToken);
+            }
           }, 1500);
         } else {
-          setSignalingStatus('disconnected');
+          setSignalingStatus(navigator.onLine ? 'connected' : 'disconnected');
         }
       };
 
@@ -452,6 +465,7 @@ export default function App() {
     };
 
     triggerWsReconnectRef.current = () => {
+      if (!roomCode || !sessionToken) return;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) {
         try {
@@ -795,6 +809,7 @@ export default function App() {
 
   // Fetch initial messages & session on entering chat
   const loadRoomSession = async (code: string, token: string) => {
+    if (!code || !token) return;
     try {
       const data = await apiRequest(`/api/rooms/${code}/session`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -804,8 +819,22 @@ export default function App() {
         setRole(data.role);
         setMessages(data.messages || []);
       }
-    } catch (e) {
-      console.error('Failed to load session:', e);
+    } catch (e: any) {
+      const errMsg = e?.message || '';
+      console.warn('Session verification notice:', errMsg || e);
+      if (
+        errMsg.includes('Invalid session') ||
+        errMsg.includes('Missing session token') ||
+        errMsg.includes('Session expired') ||
+        errMsg.includes('Room not found') ||
+        errMsg.includes('expired or closed')
+      ) {
+        setSessionToken('');
+        if (currentScreen === 'CHAT' || currentScreen === 'WAITING' || currentScreen === 'SHARE') {
+          setExpiredReason('Your session has ended or is no longer valid. Please re-enter the room.');
+          setCurrentScreen('EXPIRED');
+        }
+      }
     }
   };
 
@@ -895,7 +924,7 @@ export default function App() {
       onToggleFrameMode={() => setIsFrameMode(!isFrameMode)}
       roomCode={roomCode}
     >
-      <div className="min-h-full flex-1 flex flex-col bg-[#0C0C0C] text-[#F0F0F0] font-sans selection:bg-white selection:text-black relative pb-16 sm:pb-0">
+      <div className={`min-h-full flex-1 flex flex-col bg-[#0B0C0F] text-[#F5F3EE] font-sans selection:bg-[#E8D8B8] selection:text-[#121419] relative ${currentScreen === 'CHAT' ? 'h-[100dvh] overflow-hidden' : 'pb-16 sm:pb-0'}`}>
         {/* Top Signaling Connection Status Bar */}
         <ConnectionStatusBar
           status={signalingStatus}
@@ -906,19 +935,23 @@ export default function App() {
           onOpenSettings={() => setIsSettingsModalOpen(true)}
         />
 
-        {/* Top Navigation */}
-        <Navbar
-          currentRoomCode={['WAITING', 'CHAT', 'SHARE'].includes(currentScreen) ? roomCode : undefined}
-          roomStatus={roomInfo?.status}
-          memberCount={memberCount}
-          onNavigateHome={handleGoHome}
-          onOpenProfile={() => setIsProfileModalOpen(true)}
-          onOpenSettings={() => setIsSettingsModalOpen(true)}
-          isLowDataActive={isLowData}
-        />
+        {/* Top Navigation - rendered for all screens EXCEPT active chat (which has its own full-featured native chat header) */}
+        {currentScreen !== 'CHAT' && (
+          <Navbar
+            currentRoomCode={['WAITING', 'SHARE'].includes(currentScreen) ? roomCode : undefined}
+            roomStatus={roomInfo?.status}
+            memberCount={memberCount}
+            signalingStatus={signalingStatus}
+            pingLatency={pingLatency}
+            onNavigateHome={handleGoHome}
+            onOpenProfile={() => setIsProfileModalOpen(true)}
+            onOpenSettings={() => setIsSettingsModalOpen(true)}
+            isLowDataActive={isLowData}
+          />
+        )}
 
         {/* Main Screen Views */}
-        <main className="flex-1 flex flex-col justify-center">
+        <main className={`flex-1 flex flex-col ${currentScreen === 'CHAT' ? 'h-full overflow-hidden' : 'justify-center'}`}>
           {currentScreen === 'LANDING' && (
             <LandingPage
               onCreateRoom={() => {
@@ -972,6 +1005,10 @@ export default function App() {
               otherUserOnline={otherUserOnline}
               isOtherTyping={isOtherTyping}
               networkSettings={networkSettings}
+              signalingStatus={signalingStatus}
+              pingLatency={pingLatency}
+              onNavigateHome={handleGoHome}
+              onOpenProfile={() => setIsProfileModalOpen(true)}
               onOpenSettings={() => setIsSettingsModalOpen(true)}
               onSendMessage={handleSendMessage}
               onSendTyping={handleSendTyping}

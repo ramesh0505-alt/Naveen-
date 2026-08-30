@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, X, Clock, Eye, AlertTriangle } from 'lucide-react';
 import type { MessageItem } from '../types';
 
 interface DisappearingPhotoModalProps {
@@ -45,7 +44,6 @@ export const DisappearingPhotoModal: React.FC<DisappearingPhotoModalProps> = ({
   }, [duration, message.id, onBurnPhoto, onClose]);
 
   const handleClose = () => {
-    // If view once or timed, close burns the photo immediately
     onBurnPhoto(message.id);
     onClose();
   };
@@ -53,18 +51,18 @@ export const DisappearingPhotoModal: React.FC<DisappearingPhotoModalProps> = ({
   const progressPercent = duration > 0 ? (timeLeft / duration) * 100 : 100;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in select-none">
-      <div className="w-full max-w-lg bg-zinc-900 rounded-3xl border border-zinc-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B0C0F]/95 backdrop-blur-md animate-fade-in select-none">
+      <div className="w-full max-w-lg bg-[#121419] rounded-[24px] border border-[#272A31] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Top Header */}
-        <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-950">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
-              <Flame className="w-4 h-4" />
+        <div className="px-5 py-3.5 border-b border-[#272A31] flex items-center justify-between bg-[#181B21]">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-[#FF5C5C]/10 text-[#FF5C5C]">
+              <span className="material-symbols-outlined text-[18px]">local_fire_department</span>
             </div>
             <div>
-              <div className="text-xs font-bold text-zinc-100 flex items-center gap-2">
-                <span>Disappearing Photo</span>
-                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400">
+              <div className="font-label-md text-xs font-bold text-[#F5F3EE] flex items-center gap-2">
+                <span>Disappearing Media</span>
+                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#121419] text-[#E8D8B8] border border-[#272A31]">
                   {viewMode === 'timed_5'
                     ? '5s Auto-burn'
                     : viewMode === 'timed_10'
@@ -79,35 +77,35 @@ export const DisappearingPhotoModal: React.FC<DisappearingPhotoModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             {duration > 0 && (
-              <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-amber-400 bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-800/60">
-                <Clock className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-1 font-mono text-xs font-bold text-[#E8D8B8] bg-[#121419] px-2.5 py-1 rounded-full border border-[#272A31]">
+                <span className="material-symbols-outlined text-[13px]">timer</span>
                 <span>00:{String(timeLeft).padStart(2, '0')}</span>
               </div>
             )}
             <button
               onClick={handleClose}
               id="close-photo-modal-btn"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="w-7 h-7 rounded-full bg-[#121419] flex items-center justify-center text-[#9B9DA3] hover:text-[#F5F3EE] transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <span className="material-symbols-outlined text-[16px]">close</span>
             </button>
           </div>
         </div>
 
         {/* Progress Bar for timed */}
         {duration > 0 && (
-          <div className="w-full h-1 bg-zinc-800">
+          <div className="w-full h-1 bg-[#181B21]">
             <div
-              className="h-full bg-amber-500 transition-all duration-1000 ease-linear"
+              className="h-full bg-[#E8D8B8] transition-all duration-1000 ease-linear"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
         )}
 
         {/* Image Content */}
-        <div className="p-4 flex-1 flex items-center justify-center bg-black/60 overflow-hidden min-h-[300px]">
+        <div className="p-4 flex-1 flex items-center justify-center bg-[#0B0C0F] overflow-hidden min-h-[280px]">
           {message.mediaReference ? (
             <img
               src={message.mediaReference}
@@ -116,17 +114,17 @@ export const DisappearingPhotoModal: React.FC<DisappearingPhotoModalProps> = ({
               referrerPolicy="no-referrer"
             />
           ) : (
-            <div className="text-center text-zinc-500 text-xs py-12">
-              <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-amber-500" />
+            <div className="text-center text-[#9B9DA3] text-xs py-12">
+              <span className="material-symbols-outlined text-[28px] text-[#FF5C5C] mb-2 block">warning</span>
               Photo has expired or already burned.
             </div>
           )}
         </div>
 
         {/* Footer Note */}
-        <div className="px-6 py-3 bg-zinc-950 border-t border-zinc-800 text-[11px] text-zinc-500 text-center flex items-center justify-center gap-1.5">
-          <Eye className="w-3.5 h-3.5" />
-          <span>Closing this viewer will permanently delete the image.</span>
+        <div className="px-5 py-3 bg-[#181B21] border-t border-[#272A31] font-body-sm text-xs text-[#9B9DA3] text-center flex items-center justify-center gap-1.5">
+          <span className="material-symbols-outlined text-[15px] text-[#E8D8B8]">visibility_off</span>
+          <span>Closing this viewer will permanently erase the image.</span>
         </div>
       </div>
     </div>

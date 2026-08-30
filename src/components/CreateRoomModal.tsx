@@ -1,18 +1,4 @@
 import React, { useState } from 'react';
-import {
-  KeyRound,
-  Check,
-  Copy,
-  ArrowRight,
-  ShieldCheck,
-  Share2,
-  LogIn,
-  Loader2,
-  X,
-  Lock,
-  CheckCircle2,
-  Sparkles
-} from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import { copyToClipboard, getRoomFullUrl, triggerHaptic } from '../utils/helpers';
 
@@ -28,11 +14,33 @@ interface CreateRoomModalProps {
   }) => void;
 }
 
+const DURATIONS = [
+  { label: '10 MIN', value: 1 / 6 },
+  { label: '12 HR', value: 12 },
+  { label: '24 HR', value: 24 },
+  { label: '2 D', value: 48 },
+  { label: '3 D', value: 72 },
+  { label: '7 D', value: 168 },
+  { label: '20 D', value: 480 },
+];
+
+const AUTO_DELETE_OPTIONS = [
+  { label: 'OFF', value: 0 },
+  { label: '30 S', value: 30 },
+  { label: '1 M', value: 60 },
+  { label: '5 M', value: 300 },
+  { label: '30 M', value: 1800 },
+  { label: '1 HR', value: 3600 },
+  { label: '24 HR', value: 86400 },
+];
+
 export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   isOpen,
   onClose,
   onRoomCreated,
 }) => {
+  const [selectedDuration, setSelectedDuration] = useState<number>(24);
+  const [selectedAutoDelete, setSelectedAutoDelete] = useState<number>(0);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [createdData, setCreatedData] = useState<{
     roomCode: string;
@@ -62,8 +70,8 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          durationHours: 24,
-          defaultMessageExpiration: 0,
+          durationHours: selectedDuration,
+          defaultMessageExpiration: selectedAutoDelete,
         }),
       });
 
@@ -119,7 +127,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
         });
         return;
       } catch {
-        // Fallback to clipboard
+        // Fallback
       }
     }
     const ok = await copyToClipboard(text);
@@ -141,167 +149,224 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0b1326]/85 backdrop-blur-2xl animate-fade-in font-sans selection:bg-[#4d8eff]/30 selection:text-white">
-      {/* Ambient Background Glow Effect */}
-      <div className="absolute inset-0 pointer-events-none z-0 flex items-center justify-center opacity-30">
-        <div className="w-[450px] h-[450px] rounded-full bg-[#adc6ff]/15 blur-[90px] animate-pulse"></div>
-      </div>
-
-      {/* Main Card Container */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B0C0F]/90 backdrop-blur-2xl animate-fade-in select-none">
+      {/* Main Modal Card */}
       <div
         id="room-card"
-        className="w-full max-w-sm relative z-10 transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]"
+        className="w-full max-w-lg relative z-10 bg-[#121419] border border-[#272A31] rounded-[28px] p-6 sm:p-7 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
         role="dialog"
         aria-modal="true"
       >
-        {/* Glassmorphism Card Surface */}
-        <div className="bg-[#171f33]/85 backdrop-blur-2xl rounded-3xl p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.6)] relative overflow-hidden border border-white/10">
-          {/* Subtle Top Edge Highlight */}
-          <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"></div>
+        {/* Close Button */}
+        <button
+          onClick={() => {
+            triggerHaptic('light');
+            onClose();
+          }}
+          id="close-create-modal-btn"
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#181B21] text-[#9B9DA3] hover:text-[#F5F3EE] hover:bg-[#272A31] flex items-center justify-center transition-colors cursor-pointer"
+          title="Close"
+        >
+          <span className="material-symbols-outlined text-[18px]">close</span>
+        </button>
 
-          {/* Close Button */}
-          <button
-            onClick={() => {
-              triggerHaptic('light');
-              onClose();
-            }}
-            id="close-create-modal-btn"
-            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#222a3d]/80 text-[#c2c6d6] hover:text-[#dae2fd] hover:bg-[#2d3449] flex items-center justify-center transition-colors cursor-pointer"
-            title="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        {error && (
+          <div className="w-full p-3 mb-4 rounded-xl bg-[#FF5C5C]/10 border border-[#FF5C5C]/30 text-xs text-[#FF5C5C] text-left font-mono">
+            {error}
+          </div>
+        )}
 
-          {error && (
-            <div className="w-full p-3 mb-4 rounded-xl bg-[#93000a]/40 border border-[#ffb4ab]/30 text-xs text-[#ffdad6] text-left font-mono">
-              {error}
+        {!createdData ? (
+          /* Initial Configuration State */
+          <div className="flex flex-col text-left py-1" id="initial-state">
+            <h1 className="font-editorial text-2xl text-[#F5F3EE] mb-1.5 tracking-tight">
+              Create Private Room
+            </h1>
+            <p className="font-body-sm text-xs text-[#9B9DA3] mb-5 leading-relaxed">
+              Configure your ephemeral space. When the duration ends or either person leaves, all data vanishes.
+            </p>
+
+            {/* Room Duration Selection */}
+            <div className="mb-5">
+              <span className="font-label-sm text-[11px] text-[#E8D8B8] uppercase tracking-wider block mb-2 font-semibold font-mono">
+                Room Duration
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {DURATIONS.map((dur) => {
+                  const isActive = selectedDuration === dur.value;
+                  return (
+                    <button
+                      key={dur.label}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setSelectedDuration(dur.value);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-[#E8D8B8] text-[#121419] shadow-sm'
+                          : 'bg-[#181B21] text-[#F5F3EE] border border-[#272A31] hover:border-[#E8D8B8]/50'
+                      }`}
+                    >
+                      {dur.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          )}
 
-          {!createdData ? (
-            /* Initial State */
-            <div className="flex flex-col items-center text-center py-2" id="initial-state">
-              <div className="w-16 h-16 rounded-full bg-[#3e495d]/50 flex items-center justify-center mb-4 shadow-inner border border-white/5">
-                <KeyRound className="w-8 h-8 text-[#adc6ff]" />
+            {/* Message Auto-Delete Selection */}
+            <div className="mb-5">
+              <span className="font-label-sm text-[11px] text-[#E8D8B8] uppercase tracking-wider block mb-0.5 font-semibold font-mono">
+                Message Auto-Delete
+              </span>
+              <span className="text-[11px] text-[#9B9DA3] block mb-2">
+                Messages disappear after they are read or after this time
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {AUTO_DELETE_OPTIONS.map((opt) => {
+                  const isActive = selectedAutoDelete === opt.value;
+                  return (
+                    <button
+                      key={opt.label}
+                      onClick={() => {
+                        triggerHaptic('light');
+                        setSelectedAutoDelete(opt.value);
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-[#E8D8B8] text-[#121419] shadow-sm'
+                          : 'bg-[#181B21] text-[#F5F3EE] border border-[#272A31] hover:border-[#E8D8B8]/50'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Summary / Encryption Card */}
+            <div className="p-3.5 rounded-2xl bg-[#181B21] border border-[#272A31] flex items-start gap-3 mb-6">
+              <span className="material-symbols-outlined text-[#E8D8B8] text-[20px] mt-0.5">vpn_key</span>
+              <div>
+                <h4 className="font-label-md text-xs text-[#F5F3EE] font-semibold">End-to-End Encrypted Space</h4>
+                <p className="font-body-sm text-[11px] text-[#9B9DA3] mt-0.5">
+                  Room PIN will be generated upon creation. Only two devices can connect simultaneously.
+                </p>
+              </div>
+            </div>
+
+            {/* Create CTA */}
+            <button
+              onClick={handleCreate}
+              disabled={isGenerating}
+              id="create-btn"
+              className="w-full py-3 px-5 rounded-full bg-[#E8D8B8] hover:bg-[#F0E3C8] text-[#121419] font-label-md font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {isGenerating ? (
+                <span>Establishing Space...</span>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  <span>Create Private Room</span>
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+          /* Room Created Success State */
+          <div className="flex flex-col text-left animate-fade-in py-1" id="success-state">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-full bg-[#7ED6A5]/20 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[#7ED6A5] text-[20px]">check_circle</span>
+              </div>
+              <div>
+                <h2 className="font-editorial text-2xl text-[#F5F3EE]">
+                  Room Created
+                </h2>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="w-2 h-2 rounded-full bg-[#7ED6A5] animate-pulse"></div>
+                  <span className="font-mono text-[11px] text-[#7ED6A5]">
+                    Active · Two Devices Max
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 mb-5">
+              {/* Shareable Link Field */}
+              <div className="flex flex-col gap-1">
+                <span className="font-label-sm text-[11px] text-[#9B9DA3]">
+                  Shareable Link
+                </span>
+                <div className="flex items-center bg-[#181B21] rounded-xl p-1.5 pl-3 border border-[#272A31]">
+                  <span className="font-mono text-xs text-[#E8D8B8] truncate flex-1 select-all">
+                    {roomUrl.replace(/^https?:\/\//, '')}
+                  </span>
+                  <button
+                    aria-label="Copy Link"
+                    onClick={handleCopyLink}
+                    id="copy-created-link-btn"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9B9DA3] hover:text-[#E8D8B8] hover:bg-[#272A31] transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[17px]">
+                      {copiedLink ? 'done' : 'content_copy'}
+                    </span>
+                  </button>
+                </div>
               </div>
 
-              <h1 className="text-2xl font-semibold text-[#dae2fd] mb-2 tracking-tight">
-                Create Private Room
-              </h1>
-              <p className="text-sm text-[#c2c6d6] mb-8 leading-relaxed px-2">
-                Create a secure communication space for exactly two people.
-              </p>
+              {/* Access PIN Field */}
+              <div className="flex flex-col gap-1">
+                <span className="font-label-sm text-[11px] text-[#9B9DA3]">
+                  Access PIN
+                </span>
+                <div className="flex items-center bg-[#181B21] rounded-xl p-1.5 pl-3 border border-[#272A31]">
+                  <span className="font-mono text-xl font-bold tracking-[0.25em] text-[#F5F3EE] flex-1 select-all">
+                    {createdData.pin}
+                  </span>
+                  <button
+                    aria-label="Copy PIN"
+                    onClick={handleCopyPin}
+                    id="copy-created-pin-btn"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-[#9B9DA3] hover:text-[#E8D8B8] hover:bg-[#272A31] transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[17px]">
+                      {copiedPin ? 'done' : 'content_copy'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={handleEnter}
+                id="enter-created-room-btn"
+                className="w-full py-3 px-5 rounded-full bg-[#E8D8B8] text-[#121419] font-label-md font-bold text-xs hover:bg-[#F0E3C8] transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+              >
+                <span className="material-symbols-outlined text-[18px]">login</span>
+                <span>Enter Room</span>
+              </button>
 
               <button
-                onClick={handleCreate}
-                disabled={isGenerating}
-                id="create-btn"
-                className="w-full py-4 px-6 rounded-full bg-[#adc6ff] text-[#002e6a] font-semibold text-base shadow-[0_0_20px_rgba(173,198,255,0.25)] hover:shadow-[0_0_30px_rgba(173,198,255,0.45)] hover:bg-[#d8e2ff] transition-all active:scale-95 flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-50"
+                onClick={handleShareDetails}
+                id="share-details-btn"
+                className="w-full py-2.5 px-5 rounded-full bg-transparent text-[#E8D8B8] font-label-md font-semibold text-xs hover:bg-[#181B21] transition-all active:scale-95 flex items-center justify-center gap-1.5 border border-[#272A31] cursor-pointer"
               >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Establishing...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Create Room</span>
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
+                <span className="material-symbols-outlined text-[16px]">share</span>
+                <span>Share Room Details</span>
               </button>
             </div>
-          ) : (
-            /* Success State */
-            <div className="flex flex-col animate-fade-in py-1" id="success-state">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-full bg-[#adc6ff]/20 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-6 h-6 text-[#adc6ff]" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-[#dae2fd] uppercase tracking-wider">
-                    Room Created
-                  </h2>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#ffb786] pulsate"></div>
-                    <span className="text-[11px] font-mono text-[#ffb786] font-medium">
-                      Expires in 23:59:59
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                {/* Shareable Link Field */}
-                <div className="flex flex-col gap-1 text-left">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-[#c2c6d6] ml-2">
-                    Shareable Link
-                  </span>
-                  <div className="flex items-center bg-[#222a3d]/70 rounded-xl p-1 pl-4 group hover:bg-[#222a3d] transition-colors border border-white/5">
-                    <span className="text-sm font-mono text-[#adc6ff] truncate flex-1 select-all">
-                      {roomUrl.replace(/^https?:\/\//, '')}
-                    </span>
-                    <button
-                      aria-label="Copy Link"
-                      onClick={handleCopyLink}
-                      id="copy-created-link-btn"
-                      className="w-10 h-10 flex items-center justify-center rounded-lg text-[#c2c6d6] hover:text-[#adc6ff] hover:bg-[#adc6ff]/10 transition-colors cursor-pointer"
-                    >
-                      {copiedLink ? <Check className="w-4 h-4 text-[#adc6ff]" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Access PIN Field */}
-                <div className="flex flex-col gap-1 text-left">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-[#c2c6d6] ml-2">
-                    Access PIN
-                  </span>
-                  <div className="flex items-center bg-[#222a3d]/70 rounded-xl p-1 pl-4 group hover:bg-[#222a3d] transition-colors border border-white/5">
-                    <span className="text-xl font-mono font-bold tracking-[0.25em] text-[#dae2fd] flex-1 select-all">
-                      {createdData.pin}
-                    </span>
-                    <button
-                      aria-label="Copy PIN"
-                      onClick={handleCopyPin}
-                      id="copy-created-pin-btn"
-                      className="w-10 h-10 flex items-center justify-center rounded-lg text-[#c2c6d6] hover:text-[#adc6ff] hover:bg-[#adc6ff]/10 transition-colors cursor-pointer"
-                    >
-                      {copiedPin ? <Check className="w-4 h-4 text-[#adc6ff]" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={handleEnter}
-                  id="enter-created-room-btn"
-                  className="w-full py-3.5 px-6 rounded-full bg-[#adc6ff] text-[#002e6a] font-semibold text-base shadow-[0_0_20px_rgba(173,198,255,0.25)] hover:shadow-[0_0_30px_rgba(173,198,255,0.45)] hover:bg-[#d8e2ff] transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>Enter Room</span>
-                </button>
-
-                <button
-                  onClick={handleShareDetails}
-                  id="share-details-btn"
-                  className="w-full py-3 px-6 rounded-full bg-transparent text-[#adc6ff] font-semibold text-sm hover:bg-[#adc6ff]/10 transition-all active:scale-95 flex items-center justify-center gap-2 border border-[#adc6ff]/20 cursor-pointer"
-                >
-                  <Share2 className="w-4 h-4" />
-                  <span>Share Details</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Notification Toast */}
       {toastMessage && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-[#2d3449] text-[#dae2fd] px-5 py-2.5 rounded-full text-xs font-mono shadow-2xl z-50 flex items-center gap-2 border border-white/10 animate-fade-in">
-          <Check className="w-4 h-4 text-[#adc6ff]" />
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-[#181B21] text-[#F5F3EE] px-4 py-2 rounded-full text-xs font-mono shadow-2xl z-50 flex items-center gap-2 border border-[#272A31] animate-fade-in">
+          <span className="material-symbols-outlined text-[#7ED6A5] text-[16px]">check</span>
           <span>{toastMessage}</span>
         </div>
       )}

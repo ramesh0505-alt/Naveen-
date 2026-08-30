@@ -111,24 +111,18 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
         }
 
         if (isPast) {
-          // Active played segment color with subtle gradient
+          // Active played segment color
           if (isMe) {
-            const grad = ctx.createLinearGradient(0, yTop, 0, yTop + barHeight);
-            grad.addColorStop(0, '#FFFFFF');
-            grad.addColorStop(1, '#E2E8F0');
-            ctx.fillStyle = grad;
+            ctx.fillStyle = '#121419';
           } else {
-            const grad = ctx.createLinearGradient(0, yTop, 0, yTop + barHeight);
-            grad.addColorStop(0, '#34D399'); // Emerald 400
-            grad.addColorStop(1, '#059669'); // Emerald 600
-            ctx.fillStyle = grad;
+            ctx.fillStyle = '#E8D8B8';
           }
         } else {
-          // Unplayed static segment color
+          // Unplayed segment color
           if (isMe) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.24)';
+            ctx.fillStyle = 'rgba(18, 20, 25, 0.25)';
           } else {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+            ctx.fillStyle = 'rgba(245, 243, 238, 0.2)';
           }
         }
 
@@ -143,18 +137,15 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
         ctx.beginPath();
         ctx.moveTo(playheadX, 1);
         ctx.lineTo(playheadX, h - 1);
-        ctx.strokeStyle = isMe ? '#FFFFFF' : '#34D399';
+        ctx.strokeStyle = isMe ? '#121419' : '#E8D8B8';
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
         // Glowing center dot
         ctx.beginPath();
-        ctx.arc(playheadX, centerY, 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = isMe ? '#FFFFFF' : '#10B981';
-        ctx.shadowColor = isMe ? 'rgba(255,255,255,0.9)' : 'rgba(52,211,153,0.9)';
-        ctx.shadowBlur = 8;
+        ctx.arc(playheadX, centerY, 3, 0, Math.PI * 2);
+        ctx.fillStyle = isMe ? '#121419' : '#E8D8B8';
         ctx.fill();
-        ctx.shadowBlur = 0; // reset
       }
 
       // Draw scrub hover line and preview indicator

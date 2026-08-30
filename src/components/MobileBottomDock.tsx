@@ -1,15 +1,4 @@
 import React from 'react';
-import {
-  Home,
-  PlusCircle,
-  LogIn,
-  User,
-  MessageSquare,
-  Phone,
-  Info,
-  Sliders,
-  Shield
-} from 'lucide-react';
 import { triggerHaptic } from '../utils/helpers';
 
 interface MobileBottomDockProps {
@@ -37,73 +26,16 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
   onStartCall,
   isCallActive,
 }) => {
-  const inChat = currentScreen === 'CHAT';
-
-  if (inChat) {
-    return (
-      <nav
-        id="mobile-bottom-navigation-dock"
-        className="fixed bottom-0 w-full z-40 pb-safe bg-[#0b1326]/90 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.3)] border-t border-white/5 font-sans select-none"
-      >
-        <div className="max-w-md mx-auto h-16 flex items-center justify-around px-4">
-          {/* Chat Tab */}
-          <button
-            onClick={() => {
-              triggerHaptic('light');
-            }}
-            className="flex flex-col items-center justify-center w-14 h-14 transition-colors text-[#adc6ff] cursor-pointer"
-          >
-            <MessageSquare className="w-5 h-5" />
-            <span className="text-[10px] font-mono uppercase tracking-wider mt-1 font-semibold">Chat</span>
-          </button>
-
-          {/* Call Tab */}
-          <button
-            onClick={() => {
-              triggerHaptic('medium');
-              if (onStartCall) onStartCall();
-            }}
-            className={`flex flex-col items-center justify-center w-14 h-14 transition-colors cursor-pointer ${
-              isCallActive ? 'text-[#adc6ff]' : 'text-[#c2c6d6] hover:text-[#dae2fd]'
-            }`}
-          >
-            <Phone className="w-5 h-5" />
-            <span className="text-[10px] font-mono uppercase tracking-wider mt-1 font-semibold">Call</span>
-          </button>
-
-          {/* Room Info Tab */}
-          <button
-            onClick={() => {
-              triggerHaptic('light');
-              if (onOpenRoomInfo) onOpenRoomInfo();
-            }}
-            className="flex flex-col items-center justify-center w-14 h-14 text-[#c2c6d6] hover:text-[#dae2fd] transition-colors cursor-pointer"
-          >
-            <Info className="w-5 h-5" />
-            <span className="text-[10px] font-mono uppercase tracking-wider mt-1 font-semibold">Room</span>
-          </button>
-
-          {/* Settings Tab */}
-          <button
-            onClick={() => {
-              triggerHaptic('light');
-              if (onOpenSettings) onOpenSettings();
-            }}
-            className="flex flex-col items-center justify-center w-14 h-14 text-[#c2c6d6] hover:text-[#dae2fd] transition-colors cursor-pointer"
-          >
-            <Sliders className="w-5 h-5" />
-            <span className="text-[10px] font-mono uppercase tracking-wider mt-1 font-semibold">Settings</span>
-          </button>
-        </div>
-      </nav>
-    );
+  // During active chat, DO NOT render the bottom dock so the conversation gets full screen height
+  if (currentScreen === 'CHAT') {
+    return null;
   }
 
   // Default Home / Landing Bottom Navigation
   return (
     <nav
       id="mobile-bottom-navigation-dock"
-      className="fixed bottom-0 w-full z-40 pb-safe bg-[#0b1326]/90 backdrop-blur-xl shadow-[0_-1px_8px_rgba(0,0,0,0.3)] border-t border-white/5 font-sans select-none"
+      className="fixed bottom-0 w-full z-40 pb-safe bg-[#0B0C0F]/90 backdrop-blur-xl border-t border-[#272A31] select-none"
     >
       <div className="max-w-md mx-auto h-16 flex items-center justify-around px-4">
         {/* Home Tab */}
@@ -112,12 +44,12 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
             triggerHaptic('light');
             onNavigateHome();
           }}
-          className={`flex flex-col items-center justify-center w-14 h-14 transition-colors cursor-pointer ${
-            currentScreen === 'LANDING' ? 'text-[#adc6ff]' : 'text-[#c2c6d6] hover:text-[#dae2fd]'
+          className={`flex flex-col items-center gap-1 transition-colors cursor-pointer ${
+            currentScreen === 'LANDING' ? 'text-[#E8D8B8]' : 'text-[#9B9DA3] hover:text-[#F5F3EE]'
           }`}
         >
-          <Home className="w-5 h-5" />
-          <span className="text-[10px] font-mono uppercase tracking-wider mt-1 font-semibold">Home</span>
+          <span className="material-symbols-outlined text-[22px]">home</span>
+          <span className="font-label-sm text-[11px]">Home</span>
         </button>
 
         {/* Create Tab */}
@@ -126,10 +58,10 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
             triggerHaptic('light');
             onOpenCreate();
           }}
-          className="flex flex-col items-center justify-center w-14 h-14 text-[#c2c6d6] hover:text-[#dae2fd] transition-colors cursor-pointer"
+          className="flex flex-col items-center gap-1 text-[#9B9DA3] hover:text-[#E8D8B8] transition-colors cursor-pointer"
         >
-          <PlusCircle className="w-5 h-5" />
-          <span className="text-[10px] font-mono uppercase tracking-wider mt-1 font-semibold">Create</span>
+          <span className="material-symbols-outlined text-[22px]">add_circle</span>
+          <span className="font-label-sm text-[11px]">Create</span>
         </button>
 
         {/* Join Tab */}
@@ -138,12 +70,12 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
             triggerHaptic('light');
             onOpenJoin();
           }}
-          className={`flex flex-col items-center justify-center w-14 h-14 transition-colors cursor-pointer ${
-            currentScreen === 'JOIN' ? 'text-[#adc6ff]' : 'text-[#c2c6d6] hover:text-[#dae2fd]'
+          className={`flex flex-col items-center gap-1 transition-colors cursor-pointer ${
+            currentScreen === 'JOIN' ? 'text-[#E8D8B8]' : 'text-[#9B9DA3] hover:text-[#F5F3EE]'
           }`}
         >
-          <LogIn className="w-5 h-5" />
-          <span className="text-[10px] font-mono uppercase tracking-wider mt-1 font-semibold">Join</span>
+          <span className="material-symbols-outlined text-[22px]">group_add</span>
+          <span className="font-label-sm text-[11px]">Join</span>
         </button>
 
         {/* Profile Tab */}
@@ -152,10 +84,10 @@ export const MobileBottomDock: React.FC<MobileBottomDockProps> = ({
             triggerHaptic('light');
             onOpenProfile();
           }}
-          className="flex flex-col items-center justify-center w-14 h-14 text-[#c2c6d6] hover:text-[#dae2fd] transition-colors cursor-pointer"
+          className="flex flex-col items-center gap-1 text-[#9B9DA3] hover:text-[#E8D8B8] transition-colors cursor-pointer"
         >
-          <User className="w-5 h-5" />
-          <span className="text-[10px] font-mono uppercase tracking-wider mt-1 font-semibold">Profile</span>
+          <span className="material-symbols-outlined text-[22px]">person</span>
+          <span className="font-label-sm text-[11px]">Profile</span>
         </button>
       </div>
     </nav>
