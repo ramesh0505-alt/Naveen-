@@ -51,41 +51,41 @@ export const WaitingRoomView: React.FC<WaitingRoomViewProps> = ({
   return (
     <div className="flex flex-col w-full h-[calc(100vh-140px)] min-h-[500px] items-center justify-center p-6 sm:p-8 relative overflow-hidden animate-fade-in select-none">
       {/* Main Glassmorphic Card */}
-      <div className="relative z-10 flex flex-col items-center max-w-md w-full bg-[#121419] rounded-[28px] p-6 sm:p-7 shadow-2xl border border-[#272A31] text-center">
+      <div className="relative z-10 flex flex-col items-center max-w-md w-full bg-[#1e2025] rounded-[28px] p-6 sm:p-7 shadow-2xl border border-white/5 text-center">
         {/* Radar Icon */}
-        <div className="relative w-16 h-16 rounded-full bg-[#181B21] border border-[#272A31] flex items-center justify-center mb-4">
-          <div className="absolute inset-0 rounded-full bg-[#E8D8B8]/10 animate-ping"></div>
-          <span className="material-symbols-outlined text-[#E8D8B8] text-[28px]">sensors</span>
+        <div className="relative w-16 h-16 rounded-full bg-[#111318] border border-white/5 flex items-center justify-center mb-4">
+          <div className="absolute inset-0 rounded-full bg-[#ffb3af]/10 animate-ping"></div>
+          <span className="material-symbols-outlined text-[#ffb3af] text-[28px]">sensors</span>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#181B21] border border-[#272A31] text-xs font-label-sm text-[#E8D8B8] mb-2.5">
-          <span className="w-2 h-2 rounded-full bg-[#7ED6A5] animate-pulse"></span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#111318] border border-white/5 text-xs font-label-sm text-[#ffb3af] mb-2.5">
+          <span className="w-2 h-2 rounded-full bg-[#ffb3af] animate-pulse"></span>
           <span>Waiting for counterpart (1/2 connected)</span>
         </div>
 
-        <h1 className="font-editorial text-2xl text-[#F5F3EE] mb-1 tracking-tight">
+        <h1 className="font-display-sm text-2xl text-[#e2e2e9] mb-1 tracking-tight">
           Private Sanctuary
         </h1>
-        <p className="font-body-sm text-xs text-[#9B9DA3] mb-5 max-w-xs leading-relaxed">
+        <p className="font-body-md text-xs text-[#c7c6cb] mb-5 max-w-xs leading-relaxed">
           Share the invite credentials. As soon as the other device connects, chat and audio calling are live.
         </p>
 
         {/* Credentials Box */}
         <div className="w-full space-y-2.5 mb-5 text-left">
           {/* Link */}
-          <div className="p-3 bg-[#181B21] rounded-xl flex items-center justify-between border border-[#272A31]">
+          <div className="p-3 bg-[#111318] rounded-xl flex items-center justify-between border border-white/5">
             <div className="min-w-0 pr-2">
-              <span className="font-label-sm text-[10px] text-[#9B9DA3] uppercase tracking-wider block font-mono">
+              <span className="font-label-sm text-[10px] text-[#909095] uppercase tracking-wider block font-mono">
                 Shareable Link
               </span>
-              <span className="font-mono text-xs text-[#E8D8B8] truncate block select-all">
+              <span className="font-mono text-xs text-[#ffb3af] truncate block select-all">
                 {roomUrl.replace(/^https?:\/\//, '')}
               </span>
             </div>
             <button
               onClick={handleCopyLink}
               id="waiting-copy-link-btn"
-              className="w-7 h-7 rounded-lg bg-[#272A31] flex items-center justify-center text-[#F5F3EE] hover:text-[#E8D8B8] transition-colors shrink-0 cursor-pointer"
+              className="w-7 h-7 rounded-lg bg-[#282a2f] flex items-center justify-center text-[#e2e2e9] hover:text-[#ffb3af] transition-colors shrink-0 cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">
                 {copiedLink ? 'done' : 'content_copy'}
@@ -95,19 +95,19 @@ export const WaitingRoomView: React.FC<WaitingRoomViewProps> = ({
 
           {/* PIN */}
           {pin && (
-            <div className="p-3 bg-[#181B21] rounded-xl flex items-center justify-between border border-[#272A31]">
+            <div className="p-3 bg-[#111318] rounded-xl flex items-center justify-between border border-white/5">
               <div>
-                <span className="font-label-sm text-[10px] text-[#9B9DA3] uppercase tracking-wider block font-mono">
+                <span className="font-label-sm text-[10px] text-[#909095] uppercase tracking-wider block font-mono">
                   Access PIN
                 </span>
-                <span className="font-mono text-xl font-bold tracking-[0.25em] text-[#F5F3EE] select-all">
+                <span className="font-mono text-xl font-bold tracking-[0.25em] text-[#e2e2e9] select-all">
                   {pin}
                 </span>
               </div>
               <button
                 onClick={handleCopyPin}
                 id="waiting-copy-pin-btn"
-                className="w-7 h-7 rounded-lg bg-[#272A31] flex items-center justify-center text-[#F5F3EE] hover:text-[#E8D8B8] transition-colors shrink-0 cursor-pointer"
+                className="w-7 h-7 rounded-lg bg-[#282a2f] flex items-center justify-center text-[#e2e2e9] hover:text-[#ffb3af] transition-colors shrink-0 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">
                   {copiedPin ? 'done' : 'content_copy'}
@@ -122,7 +122,7 @@ export const WaitingRoomView: React.FC<WaitingRoomViewProps> = ({
           <button
             onClick={handleCopyAll}
             id="waiting-copy-all-btn"
-            className="w-full py-2.5 rounded-full bg-[#181B21] hover:bg-[#272A31] text-[#E8D8B8] font-label-md text-xs font-semibold flex items-center justify-center gap-1.5 border border-[#272A31] transition-colors cursor-pointer"
+            className="w-full py-2.5 rounded-full bg-[#111318] hover:bg-[#282a2f] text-[#ffb3af] font-label-md text-xs font-semibold flex items-center justify-center gap-1.5 border border-white/5 transition-colors cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">
               {copiedAll ? 'done' : 'content_copy'}
@@ -134,7 +134,7 @@ export const WaitingRoomView: React.FC<WaitingRoomViewProps> = ({
             <button
               onClick={onProceedToChat}
               id="waiting-enter-chat-btn"
-              className="w-full py-3 rounded-full bg-[#E8D8B8] text-[#121419] font-label-md font-bold text-xs flex items-center justify-center gap-1.5 shadow-md hover:bg-[#F0E3C8] transition-colors cursor-pointer"
+              className="w-full py-3 rounded-full bg-[#c7c6ca] hover:bg-[#e3e2e6] text-[#303034] font-label-md font-bold text-sm flex items-center justify-center gap-1.5 shadow-md transition-colors cursor-pointer"
             >
               <span>Enter Chat Space</span>
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>

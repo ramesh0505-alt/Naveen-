@@ -17,25 +17,25 @@ export const LeaveRoomModal: React.FC<LeaveRoomModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B0C0F]/90 backdrop-blur-2xl animate-fade-in font-sans select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#111318]/90 backdrop-blur-2xl animate-fade-in font-sans select-none">
       <div
         id="leave-room-modal"
-        className="w-full max-w-sm bg-[#121419] border border-[#FF5C5C]/30 shadow-2xl p-6 text-[#F5F3EE] rounded-[28px] animate-scale-up text-center relative overflow-hidden"
+        className="w-full max-w-sm bg-[#1e2025] border border-white/10 shadow-2xl p-6 text-[#e2e2e9] rounded-[28px] animate-scale-up text-center relative overflow-hidden"
         role="dialog"
         aria-modal="true"
       >
-        {/* Subtle Ambient Red Glow */}
-        <div className="absolute -top-16 -left-16 w-32 h-32 bg-[#FF5C5C]/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Ambient Red Glow */}
+        <div className="absolute -top-16 -left-16 w-32 h-32 bg-[#ffb4ab]/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="w-12 h-12 rounded-full bg-[#FF5C5C]/10 border border-[#FF5C5C]/30 flex items-center justify-center mx-auto mb-4 text-[#FF5C5C]">
+        <div className="w-12 h-12 rounded-full bg-[#93000a]/20 border border-[#ffb4ab]/30 flex items-center justify-center mx-auto mb-4 text-[#ffb4ab]">
           <span className="material-symbols-outlined text-[24px]">logout</span>
         </div>
 
-        <h3 className="font-editorial text-xl font-bold text-[#F5F3EE] mb-2 tracking-tight">
+        <h3 className="font-display-sm text-xl font-bold text-[#e2e2e9] mb-2 tracking-tight">
           Leave Private Room?
         </h3>
 
-        <p className="font-body-sm text-xs text-[#9B9DA3] mb-6 leading-relaxed px-2">
+        <p className="font-body-md text-xs text-[#c7c6cb] mb-6 leading-relaxed px-2">
           You will leave this private space. Your active session on this device will be revoked, and you will not be able to resume without re-joining.
         </p>
 
@@ -47,7 +47,7 @@ export const LeaveRoomModal: React.FC<LeaveRoomModalProps> = ({
               onClose();
             }}
             id="cancel-leave-room-btn"
-            className="w-full sm:flex-1 py-3 rounded-full bg-[#181B21] border border-[#272A31] text-xs font-semibold text-[#9B9DA3] hover:text-[#F5F3EE] hover:bg-[#272A31] active:scale-95 transition-all cursor-pointer min-h-[44px]"
+            className="w-full sm:flex-1 py-3 rounded-full bg-[#111318] border border-white/5 text-xs font-semibold text-[#c7c6cb] hover:text-[#e2e2e9] hover:bg-[#282a2f] active:scale-95 transition-all cursor-pointer min-h-[44px]"
           >
             Cancel
           </button>
@@ -59,7 +59,7 @@ export const LeaveRoomModal: React.FC<LeaveRoomModalProps> = ({
               onConfirm();
             }}
             id="confirm-leave-room-btn"
-            className="w-full sm:flex-1 py-3 rounded-full bg-[#FF5C5C] hover:bg-[#FF4545] active:scale-95 text-white text-xs font-semibold font-mono tracking-wide shadow-lg shadow-[#FF5C5C]/20 transition-all cursor-pointer min-h-[44px]"
+            className="w-full sm:flex-1 py-3 rounded-full bg-[#ba1a1a] hover:bg-[#de3730] active:scale-95 text-white text-xs font-semibold font-mono tracking-wide shadow-lg transition-all cursor-pointer min-h-[44px]"
           >
             Leave Room
           </button>

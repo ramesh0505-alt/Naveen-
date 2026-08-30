@@ -71,17 +71,17 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
 
   return (
     <div className="w-full max-w-lg mx-auto mb-3 px-4 animate-fade-in select-none">
-      <div className="p-4 rounded-2xl bg-[#121419]/95 border border-[#E8D8B8]/40 shadow-xl backdrop-blur-md">
+      <div className="p-4 rounded-2xl bg-[#1e2025]/95 border border-[#ffb3af]/30 shadow-xl backdrop-blur-md">
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#181B21] border border-[#E8D8B8]/30 flex items-center justify-center text-[#E8D8B8] flex-shrink-0 mt-0.5">
+          <div className="w-9 h-9 rounded-xl bg-[#111318] border border-white/5 flex items-center justify-center text-[#ffb3af] flex-shrink-0 mt-0.5">
             <span className="material-symbols-outlined text-[20px]">notifications_active</span>
           </div>
 
           <div className="flex-1 min-w-0">
-            <h4 className="font-editorial text-sm text-[#F5F3EE] tracking-tight">
+            <h4 className="font-display-sm text-sm text-[#e2e2e9] tracking-tight">
               Stay connected
             </h4>
-            <p className="font-body-sm text-xs text-[#9B9DA3] mt-0.5 leading-relaxed">
+            <p className="font-body-md text-xs text-[#c7c6cb] mt-0.5 leading-relaxed">
               Allow VELORA to notify you when your private space receives a message, voice note, or audio call.
             </p>
 
@@ -89,14 +89,14 @@ export const NotificationPermissionBanner: React.FC<NotificationPermissionBanner
               <button
                 type="button"
                 onClick={handleAllow}
-                className="px-4 py-1.5 rounded-full bg-[#E8D8B8] text-[#121419] font-label-md text-xs font-bold hover:bg-[#F0E3C8] transition-colors cursor-pointer shadow-sm"
+                className="px-4 py-1.5 rounded-full bg-[#c7c6ca] text-[#303034] font-label-md text-xs font-bold hover:bg-[#e3e2e6] transition-colors cursor-pointer shadow-sm"
               >
                 Allow Notifications
               </button>
               <button
                 type="button"
                 onClick={handleDismiss}
-                className="px-3 py-1.5 rounded-full text-[#9B9DA3] hover:text-[#F5F3EE] hover:bg-[#181B21] font-label-md text-xs transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-full text-[#c7c6cb] hover:text-[#e2e2e9] hover:bg-[#111318] font-label-md text-xs transition-colors cursor-pointer"
               >
                 Not Now
               </button>

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { formatDuration, triggerHaptic } from '../utils/helpers';
 
 interface VoiceRecorderProps {
@@ -106,7 +106,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         const y = centerY + (wave1 + wave2) * (height * 0.28) * activeAmp * env;
         ctx.lineTo(x, y);
       }
-      ctx.strokeStyle = 'rgba(212, 197, 166, 0.25)';
+      ctx.strokeStyle = 'rgba(255, 179, 175, 0.25)';
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
       ctx.stroke();
@@ -122,7 +122,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
         const y = centerY + (wave + harmonic) * (height * 0.36) * activeAmp * env;
         ctx.lineTo(x, y);
       }
-      ctx.strokeStyle = isTimeCritical ? '#ffb4ab' : '#d4c5a6';
+      ctx.strokeStyle = isTimeCritical ? '#ffb4ab' : '#ffb3af';
       ctx.lineWidth = 2.5;
       ctx.lineCap = 'round';
       ctx.stroke();
@@ -161,7 +161,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
         ctx.fillStyle = isTimeCritical
           ? 'rgba(255, 180, 171, 0.85)'
-          : `rgba(212, 197, 166, ${0.4 + barLevel * 0.6})`;
+          : `rgba(255, 179, 175, ${0.4 + barLevel * 0.6})`;
         ctx.fill();
       }
 
@@ -185,7 +185,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     return (
       <div
         id="voice-recording-hud"
-        className="w-full px-3 sm:px-4 py-3 bg-[#1b1c19] border-t border-[#d4c5a6]/30 z-40 shadow-2xl animate-fade-in select-none font-sans"
+        className="w-full px-3 sm:px-4 py-3 bg-[#1e2025] border-t border-white/5 z-40 shadow-2xl animate-fade-in select-none font-sans"
       >
         <div className="max-w-4xl mx-auto flex flex-col gap-2.5">
           {/* Top Control, Status & Clear Countdown Row */}
@@ -195,7 +195,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               type="button"
               onClick={onCancelRecording}
               id="cancel-recording-btn"
-              className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#1f201d] border border-[#46464b]/40 hover:bg-[#ffb4ab]/20 text-[#ffb4ab] flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+              className="w-11 h-11 rounded-full bg-[#111318] border border-white/5 hover:bg-[#93000a]/20 text-[#ffb4ab] flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
               title="Cancel Recording"
               aria-label="Cancel Voice Recording"
             >
@@ -205,12 +205,12 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
             {/* Status & Countdown Badges */}
             <div className="flex items-center gap-2">
               {/* Active Recording Pill */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1f201d] border border-[#46464b]/40">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#111318] border border-white/5">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#ffb4ab] animate-ping inline-block" />
                 <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-[#ffb4ab] font-mono">
                   Recording
                 </span>
-                <span className="font-mono text-xs sm:text-sm font-bold text-[#e4e2dd] ml-1">
+                <span className="font-mono text-xs sm:text-sm font-bold text-[#e2e2e9] ml-1">
                   {formatDuration(recordingSeconds)}
                 </span>
               </div>
@@ -220,8 +220,8 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                 id="recording-countdown-timer"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all ${
                   isTimeCritical
-                    ? 'bg-[#ffb4ab]/15 border-[#ffb4ab] text-[#ffb4ab] animate-pulse shadow-[0_0_12px_rgba(255,180,171,0.3)]'
-                    : 'bg-[#1f201d] border-[#46464b]/40 text-[#d4c5a6]'
+                    ? 'bg-[#93000a]/20 border-[#ffb4ab] text-[#ffb4ab] animate-pulse'
+                    : 'bg-[#111318] border-white/5 text-[#ffb3af]'
                 }`}
                 title="Max Recording Countdown Limit"
               >
@@ -241,17 +241,17 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                 type="button"
                 onClick={onStopRecording}
                 id="preview-recording-btn"
-                className="area-tap min-h-[48px] px-3.5 sm:px-4 py-2.5 rounded-full bg-[#1f201d] hover:bg-[#2a2a27] text-[#e4e2dd] text-xs font-label-md font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:scale-95 border border-[#46464b]/40"
+                className="min-h-[44px] px-3.5 sm:px-4 py-2 rounded-full bg-[#111318] hover:bg-[#282a2f] text-[#e2e2e9] text-xs font-label-md font-bold flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer active:scale-95 border border-white/5"
                 title="Stop & Review Preview"
               >
-                <span className="material-symbols-outlined text-[16px] text-[#d4c5a6]">stop</span>
+                <span className="material-symbols-outlined text-[16px] text-[#ffb3af]">stop</span>
                 <span>Preview</span>
               </button>
               <button
                 type="button"
                 onClick={onDirectSendRecording}
                 id="direct-send-recording-btn"
-                className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#d4c5a6] hover:bg-[#e4d7bc] text-[#382f19] flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-lg shrink-0"
+                className="w-11 h-11 rounded-full bg-[#ffb3af] hover:bg-[#ffdad6] text-[#561e1d] flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-lg shrink-0"
                 title="Send Recording Immediately"
                 aria-label="Send Voice Message Immediately"
               >
@@ -261,7 +261,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           </div>
 
           {/* Active Visual Wave Animation Canvas Container */}
-          <div className="relative w-full h-12 bg-[#131411] rounded-2xl border border-[#46464b]/40 overflow-hidden flex items-center justify-center">
+          <div className="relative w-full h-12 bg-[#111318] rounded-2xl border border-white/5 overflow-hidden flex items-center justify-center">
             {/* Live Visual Waveform & Oscilloscope Canvas */}
             <canvas
               ref={canvasRef}
@@ -269,11 +269,11 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               style={{ height: '48px' }}
             />
 
-            {/* Progress line bar at bottom of the visualizer representing countdown time progress */}
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2a2a27] z-20">
+            {/* Progress line bar at bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#282a2f] z-20">
               <div
                 className={`h-full transition-all duration-300 ${
-                  isTimeCritical ? 'bg-[#ffb4ab]' : 'bg-[#d4c5a6]'
+                  isTimeCritical ? 'bg-[#ffb4ab]' : 'bg-[#ffb3af]'
                 }`}
                 style={{ width: `${progressPercent}%` }}
               />
@@ -289,7 +289,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
     return (
       <div
         id="voice-preview-hud"
-        className="w-full px-3 sm:px-4 py-3 bg-[#1b1c19] border-t border-[#d4c5a6]/30 z-40 shadow-2xl animate-fade-in select-none font-sans"
+        className="w-full px-3 sm:px-4 py-3 bg-[#1e2025] border-t border-white/5 z-40 shadow-2xl animate-fade-in select-none font-sans"
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
           {/* Discard / Delete Button */}
@@ -300,7 +300,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
               onDiscardPreview();
             }}
             id="discard-voice-preview-btn"
-            className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#1f201d] border border-[#46464b]/40 hover:bg-[#ffb4ab]/20 text-[#ffb4ab] flex items-center justify-center shrink-0 transition-all cursor-pointer active:scale-95"
+            className="w-11 h-11 rounded-full bg-[#111318] border border-white/5 hover:bg-[#93000a]/20 text-[#ffb4ab] flex items-center justify-center shrink-0 transition-all cursor-pointer active:scale-95"
             title="Delete Voice Note"
             aria-label="Delete voice note"
           >
@@ -312,7 +312,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
             type="button"
             onClick={onTogglePreviewPlayback}
             id="toggle-voice-preview-play-btn"
-            className="area-tap w-12 h-12 min-w-[48px] min-h-[48px] rounded-full bg-[#d4c5a6] text-[#382f19] flex items-center justify-center shrink-0 hover:bg-[#e4d7bc] transition-all cursor-pointer active:scale-90 shadow-md"
+            className="w-11 h-11 rounded-full bg-[#ffb3af] text-[#561e1d] flex items-center justify-center shrink-0 hover:bg-[#ffdad6] transition-all cursor-pointer active:scale-90 shadow-md"
             title={isPreviewPlaying ? 'Pause Preview' : 'Play Preview'}
             aria-label={isPreviewPlaying ? 'Pause Voice Preview' : 'Play Voice Preview'}
           >
@@ -333,10 +333,10 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                 onSeekPreview(percent);
               }}
             >
-              <div className="w-full h-2.5 bg-[#2a2a27] rounded-full relative flex items-center">
+              <div className="w-full h-2 bg-[#111318] rounded-full relative flex items-center">
                 {/* Progress fill */}
                 <div
-                  className="h-full bg-[#d4c5a6] rounded-full"
+                  className="h-full bg-[#ffb3af] rounded-full"
                   style={{
                     width: `${
                       voicePreviewData.duration > 0
@@ -347,7 +347,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
                 />
                 {/* Playhead Dot */}
                 <div
-                  className="w-4 h-4 rounded-full bg-white shadow-md absolute -ml-2 transition-transform group-hover:scale-125"
+                  className="w-3.5 h-3.5 rounded-full bg-white shadow-md absolute -ml-1.5 transition-transform group-hover:scale-125"
                   style={{
                     left: `${
                       voicePreviewData.duration > 0
@@ -371,7 +371,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
             type="button"
             onClick={onSendVoice}
             id="send-voice-preview-btn"
-            className="area-tap min-h-[48px] px-5 py-2.5 rounded-full bg-[#d4c5a6] text-[#382f19] text-xs font-label-md font-bold flex items-center gap-2 shrink-0 hover:bg-[#e4d7bc] active:scale-95 transition-all shadow-md cursor-pointer"
+            className="min-h-[44px] px-5 py-2 rounded-full bg-[#ffb3af] text-[#561e1d] text-xs font-label-md font-bold flex items-center gap-2 shrink-0 hover:bg-[#ffdad6] active:scale-95 transition-all shadow-md cursor-pointer"
             title="Send Voice Note"
             aria-label="Send Voice Note"
           >

@@ -360,6 +360,21 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
+// Device identifier for multi-device push routing
+export function getDeviceId(): string {
+  if (typeof window === 'undefined') return 'unknown_device';
+  try {
+    let id = localStorage.getItem('velora_device_id');
+    if (!id) {
+      id = 'dev_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+      localStorage.setItem('velora_device_id', id);
+    }
+    return id;
+  } catch {
+    return 'dev_ephemeral_' + Date.now();
+  }
+}
+
 // VAPID helper conversion
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -374,7 +389,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export async function subscribeUserToPush(
   sessionToken: string,
-  roomCode: string
+  roomCode: string,
+  preferences?: NotificationPreferences
 ): Promise<boolean> {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
     return false;
@@ -399,9 +415,12 @@ export async function subscribeUserToPush(
       });
     }
 
-    // 3. Post subscription to backend
+    const currentPrefs = preferences || loadNotificationPreferences();
+    const deviceId = getDeviceId();
+
+    // 3. Post subscription and metadata to backend
     const subJson = subscription.toJSON();
-    await fetch('/api/notifications/subscribe', {
+    const saveRes = await fetch('/api/notifications/subscribe', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -409,14 +428,35 @@ export async function subscribeUserToPush(
       },
       body: JSON.stringify({
         roomCode,
+        deviceId,
         subscription: subJson,
+        preferences: currentPrefs,
       }),
     });
 
-    return true;
+    return saveRes.ok;
   } catch (err) {
     console.warn('Push subscription failed:', err);
     return false;
+  }
+}
+
+export async function syncNotificationPreferencesToServer(
+  sessionToken: string,
+  preferences: NotificationPreferences
+): Promise<void> {
+  if (!sessionToken || typeof window === 'undefined') return;
+  try {
+    await fetch('/api/notifications/preferences', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      body: JSON.stringify({ preferences }),
+    });
+  } catch (err) {
+    console.warn('Sync notification preferences error:', err);
   }
 }
 
@@ -437,6 +477,7 @@ export async function unsubscribeUserFromPush(sessionToken: string): Promise<voi
           'Content-Type': 'application/json',
           Authorization: `Bearer ${sessionToken}`,
         },
+        body: JSON.stringify({ deviceId: getDeviceId() }),
       }).catch(() => {});
     }
   } catch {}

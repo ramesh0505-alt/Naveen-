@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { triggerHaptic } from '../utils/helpers';
+import { VELORA_SIGNATURE_LOGO } from './Navbar';
 
 interface ProfileViewProps {
   isOpen: boolean;
@@ -11,6 +12,9 @@ interface ProfileViewProps {
   onTerminate?: () => void;
 }
 
+const PROFILE_AVATAR_IMAGE =
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuBalYKgYDqECsx0ihis1uLrrCCfy_yRN1Na3Sgizu38frYqn6jNoQe8O9sayEGWjQ1xEq6wj8H7WtklBDc5imaVSa22b0wCNaAkKHqOaJL0T1zuDtHfZ7j3oc8sWWDnoGrSQtoOYxCr678Wtya_Vi5lJe7y9nXG1uRGqbCIX0GOztMq77kFu-fdaa9XiFgXClIZ-WfzCoL-L6YhHSWjR0zZ_G8DjrtTh2qbnPZUqMcUKh4C3uhi_tTb';
+
 export const ProfileView: React.FC<ProfileViewProps> = ({
   isOpen,
   onClose,
@@ -20,9 +24,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onClearSession,
   onTerminate,
 }) => {
-  const [pushEnabled, setPushEnabled] = useState<boolean>(true);
-  const [soundsEnabled, setSoundsEnabled] = useState<boolean>(true);
-  const [micAccessEnabled, setMicAccessEnabled] = useState<boolean>(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
+  const [deviceLockEnabled, setDeviceLockEnabled] = useState<boolean>(true);
+  const [soundMode, setSoundMode] = useState<'Subtle' | 'Muted' | 'Standard'>('Subtle');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -33,279 +37,209 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B0C0F]/80 backdrop-blur-md animate-fade-in select-none">
-      <div className="w-full max-w-md bg-[#121419] border border-[#272A31] rounded-[28px] shadow-2xl p-6 text-[#F5F3EE] max-h-[90vh] overflow-y-auto flex flex-col gap-5 animate-scale-up relative">
-        {/* Close Button */}
-        <button
-          onClick={() => {
-            triggerHaptic('light');
-            onClose();
-          }}
-          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-[#181B21] hover:bg-[#272A31] text-[#9B9DA3] hover:text-[#F5F3EE] flex items-center justify-center transition-colors cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px]">close</span>
-        </button>
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#111318]/90 backdrop-blur-2xl animate-fade-in select-none overflow-y-auto">
+      <div className="w-full max-w-lg bg-[#111318] border border-white/[0.08] rounded-[28px] shadow-2xl p-6 sm:p-8 text-[#e2e2e9] max-h-[92vh] overflow-y-auto flex flex-col gap-7 animate-scale-up relative scrollbar-hide">
         {/* Header */}
-        <div className="flex flex-col gap-0.5 pr-8">
-          <span className="font-mono text-[10px] text-[#E8D8B8] uppercase tracking-widest block font-semibold">
-            Security & Identity
-          </span>
-          <h1 className="font-editorial text-2xl text-[#F5F3EE] tracking-tight">Private Profile</h1>
-          <p className="font-body-sm text-xs text-[#9B9DA3]">
-            Manage your secure session, hardware access, and local data footprint.
-          </p>
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+          <div className="flex items-center gap-3">
+            <img
+              src={VELORA_SIGNATURE_LOGO}
+              alt="Velora Logo"
+              className="h-6 w-auto object-contain"
+            />
+            <span className="font-display-sm text-2xl tracking-tight text-[#e2e2e9]">Profile</span>
+          </div>
+
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              onClose();
+            }}
+            className="w-9 h-9 rounded-full bg-[#1e2025] hover:bg-[#282a2f] text-[#c7c6cb] hover:text-[#e2e2e9] flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
         </div>
 
-        {/* Connection Status */}
-        <div className="flex flex-col gap-2">
-          <h2 className="font-mono text-[10px] text-[#E8D8B8] tracking-widest uppercase font-semibold">
-            Connection Status
-          </h2>
-          <div className="bg-[#181B21] rounded-xl p-3.5 flex items-center justify-between border border-[#272A31] shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#E8D8B8]/15 flex items-center justify-center relative">
-                <span className="material-symbols-outlined text-[#E8D8B8] text-[20px]">verified_user</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-label-md text-sm font-semibold text-[#F5F3EE]">
-                  {hasActiveSession ? 'Active Session' : 'Ephemeral Standby'}
-                </span>
-                <span className="font-body-sm text-[11px] text-[#9B9DA3]">End-to-end encrypted</span>
-              </div>
-            </div>
-            <div className="px-3 py-0.5 bg-[#E8D8B8] text-[#121419] rounded-full flex items-center gap-1.5 shadow-sm">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#121419] animate-pulse"></div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-wider">Active</span>
-            </div>
+        {/* User Identity Banner */}
+        <div className="flex items-center gap-5">
+          <div className="w-20 h-20 rounded-full bg-[#33353a] overflow-hidden relative border border-white/10 shadow-lg flex-shrink-0">
+            <img
+              src={PROFILE_AVATAR_IMAGE}
+              alt="User Avatar"
+              className="w-full h-full object-cover"
+            />
+          </div>
+          <div className="flex flex-col justify-center">
+            <h1 className="font-display-sm text-3xl leading-tight text-[#e2e2e9]">
+              Alex Mercer
+            </h1>
+            <p className="font-label-md text-sm font-medium text-[#c7c6cb] flex items-center gap-2 mt-1">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#ffb3af] shadow-[0_0_8px_rgba(255,179,175,0.4)]"></span>
+              <span>{hasActiveSession ? 'Online · In Session' : 'Online · Standby'}</span>
+            </p>
           </div>
         </div>
 
-        {/* Room Activity */}
-        <div className="flex flex-col gap-2">
-          <h2 className="font-mono text-[10px] text-[#E8D8B8] tracking-widest uppercase font-semibold">
-            Room Activity
+        {/* Session Section */}
+        <section className="flex flex-col gap-3">
+          <h2 className="font-label-md text-xs font-semibold text-[#c7c6cb] uppercase tracking-[0.1em] pl-1">
+            Session
           </h2>
-          <div className="bg-[#181B21] rounded-xl overflow-hidden border border-[#272A31] flex flex-col divide-y divide-[#272A31] shadow-sm">
-            {currentRoomCode ? (
-              <div className="p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#121419] border border-[#272A31] flex items-center justify-center text-[#E8D8B8]">
-                    <span className="material-symbols-outlined text-[18px]">sensors</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-mono text-xs font-semibold text-[#F5F3EE]">{currentRoomCode}</span>
-                    <span className="font-mono text-[11px] text-[#7ED6A5]">Active Room Connected</span>
-                  </div>
-                </div>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[#E8D8B8]/15 text-[#E8D8B8] font-mono border border-[#E8D8B8]/30">
-                  2/2 Devices
-                </span>
-              </div>
-            ) : (
-              <div className="p-3.5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#121419] border border-[#272A31] flex items-center justify-center text-[#9B9DA3]">
-                    <span className="material-symbols-outlined text-[18px]">history</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-label-md text-xs font-semibold text-[#F5F3EE]">Standby Mode</span>
-                    <span className="font-body-sm text-[11px] text-[#9B9DA3]">No active rooms joined</span>
-                  </div>
+          <div className="bg-[#282a2f] rounded-[20px] overflow-hidden flex flex-col border border-white/[0.03] divide-y divide-white/[0.04]">
+            {/* Active Devices */}
+            <div className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <div className="flex items-center gap-4">
+                <span className="material-symbols-outlined text-[#ffb3af] text-[24px]">devices</span>
+                <div>
+                  <p className="font-body-md text-sm text-[#e2e2e9] font-medium leading-tight">Active Devices</p>
+                  <p className="font-label-sm text-xs text-[#c7c6cb] mt-0.5">2 currently linked</p>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* Local Preferences */}
-        <div className="flex flex-col gap-2">
-          <h2 className="font-mono text-[10px] text-[#E8D8B8] tracking-widest uppercase font-semibold">
-            Local Preferences
-          </h2>
-          <div className="bg-[#181B21] rounded-xl divide-y divide-[#272A31] border border-[#272A31] overflow-hidden shadow-sm">
-            {/* Toggle: Notifications */}
-            <div
-              onClick={() => {
-                triggerHaptic('light');
-                setPushEnabled(!pushEnabled);
-              }}
-              className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#272A31] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-[#9B9DA3] text-[18px]">notifications</span>
-                <span className="font-body-sm text-xs text-[#F5F3EE]">Push Notifications</span>
-              </div>
-              <div
-                className={`relative w-10 h-6 rounded-full transition-colors duration-300 ${
-                  pushEnabled ? 'bg-[#E8D8B8]' : 'bg-[#272A31]'
-                }`}
-              >
-                <div
-                  className={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full transition-transform duration-300 shadow-sm ${
-                    pushEnabled ? 'translate-x-4 bg-[#121419]' : 'translate-x-0 bg-[#9B9DA3]'
-                  }`}
-                />
-              </div>
+              <span className="material-symbols-outlined text-[#c7c6cb]/50 text-[20px]">chevron_right</span>
             </div>
 
-            {/* Toggle: Sound */}
-            <div
-              onClick={() => {
-                triggerHaptic('light');
-                setSoundsEnabled(!soundsEnabled);
-              }}
-              className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#272A31] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-[#9B9DA3] text-[18px]">volume_up</span>
-                <span className="font-body-sm text-xs text-[#F5F3EE]">In-App Sounds</span>
+            {/* Active Rooms */}
+            <div className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-pointer">
+              <div className="flex items-center gap-4">
+                <span className="material-symbols-outlined text-[#c7c6ca] text-[24px]">meeting_room</span>
+                <div>
+                  <p className="font-body-md text-sm text-[#e2e2e9] font-medium leading-tight">Active Rooms</p>
+                  <p className="font-label-sm text-xs text-[#c7c6cb] mt-0.5">
+                    {currentRoomCode ? `1 secure session (${currentRoomCode})` : '0 secure sessions open'}
+                  </p>
+                </div>
               </div>
-              <div
-                className={`relative w-10 h-6 rounded-full transition-colors duration-300 ${
-                  soundsEnabled ? 'bg-[#E8D8B8]' : 'bg-[#272A31]'
-                }`}
-              >
-                <div
-                  className={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full transition-transform duration-300 shadow-sm ${
-                    soundsEnabled ? 'translate-x-4 bg-[#121419]' : 'translate-x-0 bg-[#9B9DA3]'
-                  }`}
-                />
-              </div>
-            </div>
-
-            {/* Toggle: Microphone */}
-            <div
-              onClick={() => {
-                triggerHaptic('light');
-                setMicAccessEnabled(!micAccessEnabled);
-              }}
-              className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#272A31] transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-[#9B9DA3] text-[18px]">mic</span>
-                <span className="font-body-sm text-xs text-[#F5F3EE]">Microphone Access</span>
-              </div>
-              <div
-                className={`relative w-10 h-6 rounded-full transition-colors duration-300 ${
-                  micAccessEnabled ? 'bg-[#E8D8B8]' : 'bg-[#272A31]'
-                }`}
-              >
-                <div
-                  className={`absolute left-0.5 top-0.5 w-5 h-5 rounded-full transition-transform duration-300 shadow-sm ${
-                    micAccessEnabled ? 'translate-x-4 bg-[#121419]' : 'translate-x-0 bg-[#9B9DA3]'
-                  }`}
-                />
-              </div>
+              <span className="material-symbols-outlined text-[#c7c6cb]/50 text-[20px]">chevron_right</span>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Privacy Controls */}
-        <div className="flex flex-col gap-2">
-          <h2 className="font-mono text-[10px] text-[#E8D8B8] tracking-widest uppercase font-semibold">
-            Privacy Controls
+        {/* Preferences Section */}
+        <section className="flex flex-col gap-3">
+          <h2 className="font-label-md text-xs font-semibold text-[#c7c6cb] uppercase tracking-[0.1em] pl-1">
+            Preferences
           </h2>
-          <div className="grid grid-cols-1 gap-2">
-            <button
+          <div className="bg-[#282a2f] rounded-[20px] overflow-hidden flex flex-col border border-white/[0.03] divide-y divide-white/[0.04]">
+            {/* Notifications Toggle */}
+            <div
+              onClick={() => {
+                triggerHaptic('light');
+                setNotificationsEnabled(!notificationsEnabled);
+              }}
+              className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-4">
+                <span className="material-symbols-outlined text-[#e2e2e9] text-[22px]">notifications</span>
+                <p className="font-body-md text-sm text-[#e2e2e9] font-medium">Notifications</p>
+              </div>
+              <div
+                className={`w-[52px] h-[32px] rounded-full p-1 flex items-center relative transition-colors duration-300 ${
+                  notificationsEnabled ? 'bg-[#ffb3af]/20' : 'bg-[#33353a]'
+                }`}
+              >
+                <div
+                  className={`w-[24px] h-[24px] rounded-full transform transition-transform duration-300 shadow-sm ${
+                    notificationsEnabled ? 'translate-x-5 bg-[#ffb3af]' : 'translate-x-0 bg-[#c7c6cb]'
+                  }`}
+                ></div>
+              </div>
+            </div>
+
+            {/* Face / Device Lock Toggle */}
+            <div
+              onClick={() => {
+                triggerHaptic('light');
+                setDeviceLockEnabled(!deviceLockEnabled);
+              }}
+              className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-4">
+                <span className="material-symbols-outlined text-[#e2e2e9] text-[22px]">face</span>
+                <p className="font-body-md text-sm text-[#e2e2e9] font-medium">Face / Device Lock</p>
+              </div>
+              <div
+                className={`w-[52px] h-[32px] rounded-full p-1 flex items-center relative transition-colors duration-300 ${
+                  deviceLockEnabled ? 'bg-[#ffb3af]/20' : 'bg-[#33353a]'
+                }`}
+              >
+                <div
+                  className={`w-[24px] h-[24px] rounded-full transform transition-transform duration-300 shadow-sm ${
+                    deviceLockEnabled ? 'translate-x-5 bg-[#ffb3af]' : 'translate-x-0 bg-[#c7c6cb]'
+                  }`}
+                ></div>
+              </div>
+            </div>
+
+            {/* Sound & Haptics */}
+            <div
+              onClick={() => {
+                triggerHaptic('light');
+                const next = soundMode === 'Subtle' ? 'Standard' : soundMode === 'Standard' ? 'Muted' : 'Subtle';
+                setSoundMode(next);
+              }}
+              className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-4">
+                <span className="material-symbols-outlined text-[#e2e2e9] text-[22px]">vibration</span>
+                <p className="font-body-md text-sm text-[#e2e2e9] font-medium">Sound &amp; Haptics</p>
+              </div>
+              <span className="font-label-md text-xs font-normal text-[#c7c6cb] bg-[#1e2025] px-3 py-1 rounded-full border border-white/5">
+                {soundMode}
+              </span>
+            </div>
+
+            {/* Data & Storage / Purge Cache */}
+            <div
               onClick={() => {
                 triggerHaptic('medium');
                 if (onClearSession) onClearSession();
-                showToast('Current session history cleared');
-              }}
-              className="bg-[#181B21] hover:bg-[#272A31] transition-colors rounded-xl p-3 flex items-center justify-between text-left group shadow-sm border border-[#272A31] cursor-pointer"
-            >
-              <div className="flex flex-col">
-                <span className="font-label-md text-xs text-[#F5F3EE]">Clear Current Session</span>
-                <span className="font-body-sm text-[11px] text-[#9B9DA3]">Removes chat history from this device</span>
-              </div>
-              <span className="material-symbols-outlined text-[#9B9DA3] group-hover:text-[#E8D8B8] text-[18px] transition-colors">
-                delete
-              </span>
-            </button>
-
-            {hasActiveSession && (
-              <button
-                onClick={() => {
-                  triggerHaptic('medium');
-                  if (onLeaveRoom) onLeaveRoom();
-                  onClose();
-                }}
-                className="bg-[#181B21] hover:bg-[#272A31] transition-colors rounded-xl p-3 flex items-center justify-between text-left group shadow-sm border border-[#272A31] cursor-pointer"
-              >
-                <div className="flex flex-col">
-                  <span className="font-label-md text-xs text-[#F5F3EE]">Leave Active Room</span>
-                  <span className="font-body-sm text-[11px] text-[#9B9DA3]">Disconnect and erase presence</span>
-                </div>
-                <span className="material-symbols-outlined text-[#9B9DA3] group-hover:text-[#E8D8B8] text-[18px] transition-colors">
-                  logout
-                </span>
-              </button>
-            )}
-
-            <button
-              onClick={() => {
-                triggerHaptic('heavy');
-                localStorage.clear();
-                sessionStorage.clear();
                 showToast('Temporary cached media purged');
               }}
-              className="bg-[#FF5C5C]/10 hover:bg-[#FF5C5C]/15 transition-colors rounded-xl p-3 flex items-center justify-between text-left group shadow-sm border border-[#FF5C5C]/20 cursor-pointer"
+              className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors cursor-pointer"
             >
-              <div className="flex flex-col">
-                <span className="font-label-md text-xs text-[#FF5C5C]">Clear Temporary Data</span>
-                <span className="font-body-sm text-[11px] text-[#FF5C5C]/70">Purge all cached media and keys</span>
+              <div className="flex items-center gap-4">
+                <span className="material-symbols-outlined text-[#e2e2e9] text-[22px]">storage</span>
+                <p className="font-body-md text-sm text-[#e2e2e9] font-medium">Data &amp; Storage</p>
               </div>
-              <span className="material-symbols-outlined text-[#FF5C5C] text-[18px]">delete_forever</span>
+              <span className="material-symbols-outlined text-[#c7c6cb]/50 text-[20px]">chevron_right</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Return Home / Leave Session Action */}
+        <div className="flex flex-col gap-2.5 pt-2">
+          {hasActiveSession && onLeaveRoom && (
+            <button
+              onClick={() => {
+                triggerHaptic('medium');
+                onLeaveRoom();
+                onClose();
+              }}
+              className="w-full bg-[#93000a]/20 hover:bg-[#93000a]/30 text-[#ffb4ab] border border-[#ffb4ab]/20 font-label-md text-sm py-3.5 rounded-[18px] flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+            >
+              <span className="material-symbols-outlined text-[18px]">meeting_room</span>
+              <span>Leave Active Room</span>
             </button>
-          </div>
-        </div>
+          )}
 
-        {/* Device Identity */}
-        <div className="flex flex-col gap-1.5 pt-1">
-          <h2 className="font-mono text-[9px] text-[#6E7179] tracking-widest uppercase text-center">
-            Device Identity
-          </h2>
-          <div className="bg-[#181B21] rounded-xl p-3 flex flex-col gap-1.5 shadow-inner text-center border border-[#272A31]">
-            <div className="flex justify-between items-center px-2">
-              <span className="font-body-sm text-[11px] text-[#9B9DA3]">Node ID</span>
-              <span className="font-mono text-xs text-[#F5F3EE] tracking-widest font-semibold">
-                NX-84A9-2B
-              </span>
-            </div>
-            <div className="flex justify-between items-center px-2">
-              <span className="font-body-sm text-[11px] text-[#9B9DA3]">Session Protocol</span>
-              <span className="font-mono text-[11px] text-[#E8D8B8] tracking-widest opacity-80">
-                v2_ecdsa_99x
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Sign Out / Terminate */}
-        <div className="pt-1 pb-1">
           <button
             onClick={() => {
-              triggerHaptic('heavy');
-              if (onTerminate) {
-                onTerminate();
-              } else if (onLeaveRoom) {
-                onLeaveRoom();
-              }
+              triggerHaptic('light');
               onClose();
             }}
-            className="w-full bg-[#FF5C5C] text-[#0B0C0F] hover:bg-[#FF7373] py-3 rounded-full font-label-md font-bold text-xs shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            className="w-full bg-[#33353a]/60 hover:bg-[#33353a] transition-colors text-[#e2e2e9] font-label-md text-sm py-3.5 rounded-[18px] flex items-center justify-center gap-2 border border-white/[0.05] shadow-sm active:scale-[0.98] cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[16px]">power_settings_new</span>
-            <span>Terminate Session</span>
+            <span className="material-symbols-outlined text-[18px] text-[#c7c6cb]">logout</span>
+            <span>Return Home</span>
           </button>
         </div>
       </div>
 
       {/* Notification Toast */}
       {toastMessage && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-[#181B21] text-[#F5F3EE] px-4 py-2 rounded-full text-xs font-mono shadow-2xl z-50 flex items-center gap-2 border border-[#272A31] animate-fade-in">
-          <span className="material-symbols-outlined text-[#7ED6A5] text-[16px]">check</span>
+        <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-[#33353a] text-[#e2e2e9] font-label-sm px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 border border-white/10 animate-fade-in">
+          <span className="material-symbols-outlined text-[#ffb3af] text-[18px]">check_circle</span>
           <span>{toastMessage}</span>
         </div>
       )}

@@ -43,6 +43,7 @@ interface ChatViewProps {
     viewMode?: ViewMode;
     burnAfterSeconds?: number;
     burnOnRead?: boolean;
+    replyToMessageId?: string;
   }) => Promise<void>;
   onSendTyping: (isTyping: boolean) => void;
   onStartCall: () => void;
@@ -88,6 +89,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [showClearModal, setShowClearModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<MessageItem | null>(null);
+
+  // Message Reply State (Target message ID & Item stored in local state)
+  const [replyToMessageId, setReplyToMessageId] = useState<string | null>(null);
+  const [replyingToMessage, setReplyingToMessage] = useState<MessageItem | null>(null);
+  const [isEnteringReplyMode, setIsEnteringReplyMode] = useState<boolean>(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Per-message custom expiration selector state
   const [messageTimerOverride] = useState<number | null>(null);
@@ -190,6 +197,38 @@ export const ChatView: React.FC<ChatViewProps> = ({
     previewAudioRef.current.currentTime = target;
   };
 
+  // Reply-to-message handlers (triggers entering reply mode state & focuses input)
+  const handleReplyToMessage = (msg: MessageItem) => {
+    triggerHaptic('medium');
+    setReplyToMessageId(msg.id);
+    setReplyingToMessage(msg);
+    setIsEnteringReplyMode(true);
+    setTimeout(() => {
+      setIsEnteringReplyMode(false);
+    }, 500);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 60);
+  };
+
+  const handleCancelReply = () => {
+    triggerHaptic('light');
+    setReplyToMessageId(null);
+    setReplyingToMessage(null);
+    setIsEnteringReplyMode(false);
+  };
+
+  // Keyboard shortcut: Escape cancels active reply
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (replyingToMessage || replyToMessageId)) {
+        handleCancelReply();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [replyingToMessage, replyToMessageId]);
+
   // Handle typing debounce
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputText(e.target.value);
@@ -206,7 +245,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const text = inputText.trim();
     if (!text) return;
 
+    const replyIdToSend = replyToMessageId || replyingToMessage?.id;
     setInputText('');
+    setReplyToMessageId(null);
+    setReplyingToMessage(null);
+    setIsEnteringReplyMode(false);
     onSendTyping(false);
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
 
@@ -234,6 +277,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         textContent: text,
         burnOnRead,
         burnAfterSeconds,
+        replyToMessageId: replyIdToSend,
       });
       SoundEffects.playMessageSent();
       triggerHaptic('light');
@@ -326,6 +370,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!voicePreviewData) return;
     hapticMessageSent();
 
+    const replyIdToSend = replyToMessageId || replyingToMessage?.id;
+    setReplyToMessageId(null);
+    setReplyingToMessage(null);
+    setIsEnteringReplyMode(false);
+
     let burnOnRead = false;
     let burnAfterSeconds: number | undefined = undefined;
 
@@ -351,6 +400,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         duration: voicePreviewData.duration,
         burnOnRead,
         burnAfterSeconds,
+        replyToMessageId: replyIdToSend,
       });
 
       setVoicePreviewData(null);
@@ -391,6 +441,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setIsRecording(false);
       SoundEffects.playRecordStop();
 
+      const replyIdToSend = replyToMessageId || replyingToMessage?.id;
+      setReplyToMessageId(null);
+      setReplyingToMessage(null);
+      setIsEnteringReplyMode(false);
+
       let burnOnRead = false;
       let burnAfterSeconds: number | undefined = undefined;
       if (messageTimerOverride === -1) {
@@ -415,6 +470,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         duration: data.duration,
         burnOnRead,
         burnAfterSeconds,
+        replyToMessageId: replyIdToSend,
       });
       SoundEffects.playMessageSent();
     } catch {
@@ -433,6 +489,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
       return;
     }
 
+    const replyIdToSend = replyToMessageId || replyingToMessage?.id;
+    setReplyToMessageId(null);
+    setReplyingToMessage(null);
+    setIsEnteringReplyMode(false);
+
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result as string;
@@ -450,6 +511,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           viewMode: photoViewMode,
           burnAfterSeconds,
           burnOnRead: photoViewMode !== 'standard',
+          replyToMessageId: replyIdToSend,
         });
         SoundEffects.playMessageSent();
         triggerHaptic('medium');
@@ -823,6 +885,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           onRevealMessage={handleRevealMessage}
           onSelectPhoto={(msg) => setSelectedPhoto(msg)}
           onViewMessage={onViewMessage}
+          onReplyToMessage={handleReplyToMessage}
         />
       </div>
 
@@ -858,6 +921,60 @@ export const ChatView: React.FC<ChatViewProps> = ({
       {/* Chat Composer Bar (Native Mobile Optimized with Safe-Area) */}
       {!isRecording && !voicePreviewData && (
         <div className="w-full px-2.5 sm:px-4 pt-1.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-[#0B0C0F]/95 backdrop-blur-xl z-40 border-t border-[#272A31] shadow-[0_-4px_20px_rgba(0,0,0,0.6)] flex-shrink-0">
+          {/* Compact Reply Composer Banner attached directly to input bar */}
+          {replyingToMessage && (
+            <div
+              id="compact-reply-composer"
+              className={`max-w-4xl mx-auto mb-2 px-3.5 py-2.5 rounded-2xl bg-[#181B21] border border-[#272A31] flex items-center justify-between gap-3 animate-slide-up shadow-xl select-none transition-all duration-300 ${
+                isEnteringReplyMode
+                  ? 'ring-2 ring-[#ffb3af] shadow-[0_0_20px_rgba(255,179,175,0.35)] scale-[1.01]'
+                  : ''
+              }`}
+            >
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-1 h-9 rounded-full bg-[#ffb3af] flex-shrink-0" />
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-1.5 text-[11px] font-mono font-bold text-[#ffb3af]">
+                    <span className="material-symbols-outlined text-[14px]">reply</span>
+                    <span>
+                      Replying to {replyingToMessage.senderRole === role ? 'yourself' : 'Partner'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-[#c7c6cb] truncate flex items-center gap-1 font-sans">
+                    {replyingToMessage.type === 'VOICE' ? (
+                      <>
+                        <span className="material-symbols-outlined text-[14px] text-[#ffb3af]">
+                          graphic_eq
+                        </span>
+                        <span>
+                          Voice note ({replyingToMessage.duration ? `${replyingToMessage.duration}s` : 'audio'})
+                        </span>
+                      </>
+                    ) : replyingToMessage.type === 'IMAGE' ? (
+                      <>
+                        <span className="material-symbols-outlined text-[14px] text-[#ffb3af]">
+                          image
+                        </span>
+                        <span>Photo</span>
+                      </>
+                    ) : (
+                      <span>{replyingToMessage.textContent || 'Message'}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelReply}
+                id="cancel-reply-btn"
+                title="Cancel reply (Esc)"
+                className="w-7 h-7 rounded-full bg-[#272A31]/70 hover:bg-[#272A31] flex items-center justify-center text-[#9B9DA3] hover:text-[#F5F3EE] transition-colors cursor-pointer flex-shrink-0"
+              >
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSendText} className="flex items-end gap-2 max-w-4xl mx-auto">
             {/* Plus / Media Menu Button */}
             <button
@@ -876,6 +993,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             {/* Textarea Composer Container */}
             <div className="flex-1 bg-[#181B21] border border-[#272A31] rounded-[22px] min-h-[40px] sm:min-h-[44px] flex items-center px-3 sm:px-3.5 py-0.5 shadow-inner focus-within:border-[#E8D8B8]/60 transition-all">
               <textarea
+                ref={textareaRef}
                 value={inputText}
                 onChange={handleInputChange}
                 onKeyDown={(e) => {
@@ -884,7 +1002,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     handleSendText();
                   }
                 }}
-                placeholder="Type a message..."
+                placeholder={replyingToMessage ? "Type a reply..." : "Type a message..."}
                 rows={1}
                 id="chat-textarea-input"
                 className="w-full bg-transparent text-[#F5F3EE] font-sans text-sm sm:text-base placeholder-[#6E7179] outline-none resize-none max-h-24 sm:max-h-32 py-2 leading-relaxed"

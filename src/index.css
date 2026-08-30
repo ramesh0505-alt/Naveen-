@@ -2,103 +2,119 @@
 
 @layer base {
   :root {
-    font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'DM Sans', 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color-scheme: dark;
-    --color-background: #0B0C0F;
-    --color-surface: #121419;
-    --color-surface-elevated: #181B21;
-    --color-surface-container: #1C2027;
-    --color-border: #272A31;
-    --color-border-subtle: #1F2229;
-    --color-text-primary: #F5F3EE;
-    --color-text-secondary: #9B9DA3;
-    --color-text-tertiary: #6E7179;
-    --color-accent-warm: #E8D8B8;
-    --color-accent-warm-hover: #F0E3C8;
-    --color-accent-warm-dim: #3D382E;
-    --color-accent-coral: #FF5C5C;
-    --color-accent-success: #7ED6A5;
-
-    /* Legacy bridge aliases */
-    --color-surface-dim: #0B0C0F;
-    --color-surface-bright: #272A31;
-    --color-surface-variant: #181B21;
-    --color-surface-container-lowest: #0B0C0F;
-    --color-surface-container-low: #121419;
-    --color-surface-container-high: #222630;
-    --color-surface-container-highest: #2D323E;
-    --color-on-background: #F5F3EE;
-    --color-on-surface: #F5F3EE;
-    --color-on-surface-variant: #9B9DA3;
-    --color-outline: #6E7179;
-    --color-outline-variant: #272A31;
-    --color-error: #FF5C5C;
-    --color-tertiary: #E8D8B8;
+    --color-background: #111318;
+    --color-surface: #111318;
+    --color-surface-dim: #111318;
+    --color-surface-bright: #37393f;
+    --color-surface-variant: #33353a;
+    --color-surface-container-lowest: #0c0e13;
+    --color-surface-container-low: #1a1b21;
+    --color-surface-container: #1e2025;
+    --color-surface-container-high: #282a2f;
+    --color-surface-container-highest: #33353a;
+    --color-primary: #c7c6ca;
+    --color-primary-container: #0b0c0f;
+    --color-primary-fixed: #e3e2e6;
+    --color-primary-fixed-dim: #c7c6ca;
+    --color-on-primary: #303034;
+    --color-on-primary-container: #7a7a7e;
+    --color-on-primary-fixed: #1b1b1f;
+    --color-secondary: #c8c6c2;
+    --color-secondary-container: #494946;
+    --color-secondary-fixed: #e4e2dd;
+    --color-secondary-fixed-dim: #c8c6c2;
+    --color-on-secondary: #30312e;
+    --color-on-secondary-container: #b9b8b4;
+    --color-on-secondary-fixed: #1b1c19;
+    --color-tertiary: #ffb3af;
+    --color-tertiary-container: #230002;
+    --color-tertiary-fixed: #ffdad7;
+    --color-tertiary-fixed-dim: #ffb3af;
+    --color-on-tertiary: #68000d;
+    --color-on-tertiary-container: #db4245;
+    --color-on-tertiary-fixed: #410005;
+    --color-on-surface: #e2e2e9;
+    --color-on-surface-variant: #c7c6cb;
+    --color-outline: #909095;
+    --color-outline-variant: #46464b;
+    --color-error: #ffb4ab;
+    --color-error-container: #93000a;
+    --color-on-error: #690005;
   }
 }
 
-.font-editorial {
-  font-family: 'DM Serif Display', 'Instrument Serif', Georgia, serif;
-}
-
-.font-headline-lg {
-  font-family: 'DM Serif Display', serif;
-  font-size: 32px;
-  line-height: 1.2;
-}
-
-.font-headline-md {
-  font-family: 'DM Serif Display', serif;
-  font-size: 24px;
-  line-height: 1.3;
-}
-
+/* Typography Classes matching New Design System */
 .font-display-lg {
-  font-family: 'DM Serif Display', serif;
+  font-family: 'Bodoni Moda', Georgia, serif;
   font-size: 56px;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  font-weight: 400;
 }
 
-.font-display-lg-mobile {
-  font-family: 'DM Serif Display', serif;
-  font-size: 36px;
-  line-height: 1.15;
+.font-display-sm {
+  font-family: 'Bodoni Moda', Georgia, serif;
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-weight: 400;
+}
+
+.font-headline-lg {
+  font-family: 'Bodoni Moda', Georgia, serif;
+  font-size: 32px;
+  line-height: 1.3;
+  font-weight: 400;
+}
+
+.font-headline-lg-mobile {
+  font-family: 'Bodoni Moda', Georgia, serif;
+  font-size: 28px;
+  line-height: 1.25;
+  font-weight: 400;
+}
+
+.font-editorial {
+  font-family: 'Bodoni Moda', Georgia, serif;
 }
 
 .font-body-lg {
-  font-family: 'Manrope', sans-serif;
-  font-size: 17px;
+  font-family: 'DM Sans', 'Manrope', sans-serif;
+  font-size: 18px;
   line-height: 1.6;
+  letter-spacing: 0.01em;
   font-weight: 400;
 }
 
 .font-body-md {
-  font-family: 'Manrope', sans-serif;
-  font-size: 15px;
+  font-family: 'DM Sans', 'Manrope', sans-serif;
+  font-size: 16px;
   line-height: 1.6;
   font-weight: 400;
 }
 
 .font-body-sm {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'DM Sans', 'Manrope', sans-serif;
   font-size: 13px;
   line-height: 1.5;
   font-weight: 400;
 }
 
 .font-label-md {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'DM Sans', 'Manrope', sans-serif;
   font-size: 14px;
   line-height: 1.2;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
   font-weight: 600;
 }
 
 .font-label-sm {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'DM Sans', 'Manrope', sans-serif;
   font-size: 12px;
   line-height: 1.2;
+  letter-spacing: 0.02em;
   font-weight: 500;
 }
 
@@ -106,20 +122,26 @@
   font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-/* Scrollbar polish */
+/* Chat bubble styling */
+.msg-bubble-in {
+  border-radius: 18px 18px 18px 4px;
+}
+.msg-bubble-out {
+  border-radius: 18px 18px 4px 18px;
+}
+
+/* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  display: none;
+  width: 0px;
+  height: 0px;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }
-::-webkit-scrollbar-thumb {
-  background: #272A31;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3D382E;
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 html, body {
@@ -127,8 +149,9 @@ html, body {
   -webkit-overflow-scrolling: touch;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  background-color: #0B0C0F;
-  color: #F5F3EE;
+  background-color: #111318;
+  color: #e2e2e9;
+  min-height: max(884px, 100dvh);
 }
 
 /* Safe area padding utilities */
@@ -154,91 +177,27 @@ html, body {
   height: 100dvh;
 }
 
-/* Animations */
+/* Custom Animations */
+@keyframes wave {
+  0% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-10px) scaleY(1.1); }
+  100% { transform: translateY(0) scaleY(1); }
+}
+
+@keyframes drift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(20px, 30px) scale(1.1); }
+}
+
 @keyframes ripple {
   0% { transform: scale(1); opacity: 0.8; border-width: 1px; }
   100% { transform: scale(2.5); opacity: 0; border-width: 0px; }
 }
 
-@keyframes wave {
-  0%, 100% { transform: scaleY(1); opacity: 0.5; }
-  50% { transform: scaleY(1.8); opacity: 1; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(-6deg); }
-  50% { transform: translateY(-10px) rotate(-4deg); }
-}
-
-@keyframes pingSlow {
-  0% { transform: scale(0.8); opacity: 0.8; }
-  100% { transform: scale(2); opacity: 0; }
-}
-
-@keyframes pingSlower {
-  0% { transform: scale(0.9); opacity: 0.6; }
-  100% { transform: scale(1.5); opacity: 0; }
-}
-
-@keyframes pulseSlow {
-  0%, 100% { opacity: 0.8; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(1.05); }
-}
-
-.animate-ripple {
-  animation: ripple 3s ease-out infinite;
-}
-
-.animate-ping-slow {
-  animation: pingSlow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-.animate-ping-slower {
-  animation: pingSlower 3s cubic-bezier(0, 0, 0.2, 1) infinite 1.5s;
-}
-
-.animate-pulse-slow {
-  animation: pulseSlow 6s ease-in-out infinite;
-}
-
-.animate-wave {
-  animation: wave 1.2s ease-in-out infinite;
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-@keyframes breathe {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(212, 197, 166, 0);
-    border-color: #46464b;
-  }
-  50% {
-    transform: scale(1.025);
-    box-shadow: 0 0 18px 2px rgba(212, 197, 166, 0.25);
-    border-color: #d4c5a6;
-  }
-}
-
-.animate-breathe {
-  animation: breathe 3.2s ease-in-out infinite;
-}
-
 @keyframes laserScan {
-  0% {
-    top: 5%;
-    opacity: 0.8;
-  }
-  50% {
-    top: 92%;
-    opacity: 1;
-  }
-  100% {
-    top: 5%;
-    opacity: 0.8;
-  }
+  0% { top: 5%; opacity: 0.8; }
+  50% { top: 92%; opacity: 1; }
+  100% { top: 5%; opacity: 0.8; }
 }
 
 .animate-laser {
@@ -272,6 +231,15 @@ html, body {
   animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @layer utilities {
   .area-tap {
     position: relative;
@@ -283,4 +251,3 @@ html, body {
     touch-action: manipulation;
   }
 }
-

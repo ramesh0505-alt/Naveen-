@@ -71,12 +71,12 @@ export const NotificationToast: React.FC = () => {
 
   const getAccentColor = () => {
     if (activeToast.type === 'CALL' || activeToast.type === 'MISSED_CALL') {
-      return 'text-[#FF5C5C] bg-[#FF5C5C]/10 border-[#FF5C5C]/30';
+      return 'text-[#ffb4ab] bg-[#93000a]/20 border-[#ffb4ab]/30';
     }
     if (activeToast.type === 'ROOM_JOINED') {
-      return 'text-[#7ED6A5] bg-[#7ED6A5]/10 border-[#7ED6A5]/30';
+      return 'text-[#ffb3af] bg-[#ffb3af]/15 border-[#ffb3af]/30';
     }
-    return 'text-[#E8D8B8] bg-[#181B21] border-[#272A31]';
+    return 'text-[#ffb3af] bg-[#111318] border-white/5';
   };
 
   return (
@@ -87,7 +87,7 @@ export const NotificationToast: React.FC = () => {
     >
       <div
         onClick={handleClick}
-        className="group flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#121419]/95 backdrop-blur-xl border border-[#272A31] shadow-2xl hover:border-[#E8D8B8]/50 transition-all cursor-pointer"
+        className="group flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#1e2025]/95 backdrop-blur-xl border border-white/10 shadow-2xl hover:border-[#ffb3af]/40 transition-all cursor-pointer"
       >
         <div className="flex items-center gap-3 min-w-0">
           <div
@@ -98,12 +98,12 @@ export const NotificationToast: React.FC = () => {
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-editorial text-xs text-[#F5F3EE] tracking-tight">
+              <span className="font-display-sm text-xs text-[#e2e2e9] tracking-tight">
                 {activeToast.title}
               </span>
-              <span className="font-mono text-[9px] text-[#6E7179]">now</span>
+              <span className="font-mono text-[9px] text-[#909095]">now</span>
             </div>
-            <p className="font-body-sm text-[11px] text-[#9B9DA3] truncate group-hover:text-[#F5F3EE] transition-colors mt-0.5">
+            <p className="font-body-md text-[11px] text-[#c7c6cb] truncate group-hover:text-[#e2e2e9] transition-colors mt-0.5">
               {activeToast.body}
             </p>
           </div>
@@ -115,7 +115,7 @@ export const NotificationToast: React.FC = () => {
             setIsVisible(false);
             setTimeout(() => setActiveToast(null), 200);
           }}
-          className="w-6 h-6 rounded-full flex items-center justify-center text-[#6E7179] hover:text-[#F5F3EE] hover:bg-[#181B21] transition-colors flex-shrink-0"
+          className="w-6 h-6 rounded-full flex items-center justify-center text-[#909095] hover:text-[#e2e2e9] hover:bg-[#111318] transition-colors flex-shrink-0"
         >
           <span className="material-symbols-outlined text-[14px]">close</span>
         </button>

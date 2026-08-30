@@ -28,7 +28,9 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
     if (initialPin && initialPin.length >= 1) {
       const clean = initialPin.replace(/[^0-9]/g, '').slice(0, 6).split('');
       const arr = ['', '', '', '', '', ''];
-      clean.forEach((c, i) => { arr[i] = c; });
+      clean.forEach((c, i) => {
+        arr[i] = c;
+      });
       return arr;
     }
     return ['', '', '', '', '', ''];
@@ -69,7 +71,9 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
     if (initialPin && initialPin.length >= 1) {
       const clean = initialPin.replace(/[^0-9]/g, '').slice(0, 6).split('');
       const arr = ['', '', '', '', '', ''];
-      clean.forEach((c, i) => { arr[i] = c; });
+      clean.forEach((c, i) => {
+        arr[i] = c;
+      });
       setDigits(arr);
     }
   }, [initialPin]);
@@ -137,7 +141,9 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
     if (data.pin) {
       const clean = data.pin.replace(/[^0-9]/g, '').slice(0, 6).split('');
       const arr = ['', '', '', '', '', ''];
-      clean.forEach((c, i) => { arr[i] = c; });
+      clean.forEach((c, i) => {
+        arr[i] = c;
+      });
       setDigits(arr);
     }
   };
@@ -238,12 +244,12 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
         <button
           onClick={onCancel}
           id="join-back-btn"
-          className="w-9 h-9 flex items-center justify-center text-[#9B9DA3] hover:text-[#F5F3EE] rounded-full hover:bg-[#181B21] transition-colors cursor-pointer"
+          className="w-9 h-9 flex items-center justify-center text-[#c7c6cb] hover:text-[#e2e2e9] rounded-full hover:bg-[#1e2025] transition-colors cursor-pointer"
         >
           <span className="material-symbols-outlined text-[20px]">arrow_back</span>
         </button>
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#181B21] border border-[#272A31] text-xs font-label-sm text-[#E8D8B8]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#E8D8B8] animate-pulse"></span>
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1e2025] border border-white/5 text-xs font-label-sm text-[#ffb3af]">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#ffb3af] animate-pulse"></span>
           <span>Access Portal</span>
         </div>
       </div>
@@ -251,25 +257,25 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
       {/* Main Container */}
       <div className="px-6 flex flex-col items-center justify-center pt-2 relative z-10 flex-grow max-w-md mx-auto w-full">
         {/* Key Icon Badge */}
-        <div className="w-14 h-14 rounded-2xl bg-[#181B21] border border-[#272A31] shadow-lg flex items-center justify-center mb-5">
-          <span className="material-symbols-outlined text-[#E8D8B8] text-[26px]">key</span>
+        <div className="w-14 h-14 rounded-2xl bg-[#1e2025] border border-white/5 shadow-lg flex items-center justify-center mb-5">
+          <span className="material-symbols-outlined text-[#c7c6ca] text-[26px]">key</span>
         </div>
 
         {/* Title and Subtitle */}
         <div className="text-center max-w-sm mb-5">
           {initialPin && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#7ED6A5]/10 border border-[#7ED6A5]/25 text-[11px] font-mono text-[#7ED6A5] mb-2.5 animate-fade-in">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ffb3af]/10 border border-[#ffb3af]/25 text-[11px] font-mono text-[#ffb3af] mb-2.5 animate-fade-in">
               <span className="material-symbols-outlined text-[14px]">qr_code_scanner</span>
               <span>Scanned from Partner's Screen</span>
             </div>
           )}
-          <span className="font-mono text-[11px] text-[#E8D8B8] uppercase tracking-widest block mb-1.5 font-semibold">
+          <span className="font-label-sm text-[11px] text-[#ffb3af] uppercase tracking-widest block mb-1.5 font-semibold">
             Access Required
           </span>
-          <h1 className="font-editorial text-3xl text-[#F5F3EE] mb-1.5 tracking-tight">
+          <h1 className="font-display-sm text-3xl text-[#e2e2e9] mb-1.5 tracking-tight">
             Join Private Room
           </h1>
-          <p className="font-body-sm text-xs text-[#9B9DA3]">
+          <p className="font-body-md text-xs text-[#c7c6cb]">
             {initialPin
               ? 'Credentials detected. Tap Enter Room to join your partner.'
               : 'Enter the 6-digit PIN shared with you to enter this space.'}
@@ -278,7 +284,7 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
 
         {/* Form Container */}
         <div
-          className={`w-full bg-[#121419] rounded-[28px] p-6 sm:p-7 shadow-2xl border border-[#272A31] transition-all duration-300 ${
+          className={`w-full bg-[#1e2025] rounded-[28px] p-6 sm:p-7 shadow-2xl border border-white/5 transition-all duration-300 ${
             isShaking ? 'animate-shake' : ''
           }`}
         >
@@ -290,30 +296,30 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
               setIsScannerOpen(true);
             }}
             id="join-scan-partner-qr-btn"
-            className="w-full mb-4 py-2.5 px-4 rounded-xl bg-[#1C2027] hover:bg-[#252A34] text-[#E8D8B8] border border-[#E8D8B8]/30 hover:border-[#E8D8B8]/60 font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer group active:scale-98"
+            className="w-full mb-4 py-2.5 px-4 rounded-xl bg-[#282a2f] hover:bg-[#33353a] text-[#e2e2e9] border border-white/10 hover:border-[#ffb3af]/40 font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer group active:scale-98"
           >
-            <span className="material-symbols-outlined text-[18px] text-[#E8D8B8] group-hover:scale-110 transition-transform">
+            <span className="material-symbols-outlined text-[18px] text-[#ffb3af] group-hover:scale-110 transition-transform">
               photo_camera
             </span>
             <span>Scan Partner's QR</span>
-            <span className="text-[10px] bg-[#E8D8B8]/15 text-[#E8D8B8] px-1.5 py-0.5 rounded font-mono ml-auto">
+            <span className="text-[10px] bg-[#ffb3af]/15 text-[#ffb3af] px-1.5 py-0.5 rounded font-mono ml-auto">
               Camera
             </span>
           </button>
 
           <div className="flex items-center gap-2 w-full mb-4">
-            <div className="flex-1 h-[1px] bg-[#272A31]"></div>
-            <span className="font-mono text-[10px] uppercase text-[#6E7179] tracking-wider">or enter manually</span>
-            <div className="flex-1 h-[1px] bg-[#272A31]"></div>
+            <div className="flex-1 h-[1px] bg-white/5"></div>
+            <span className="font-mono text-[10px] uppercase text-[#909095] tracking-wider">or enter manually</span>
+            <div className="flex-1 h-[1px] bg-white/5"></div>
           </div>
 
           <form onSubmit={handleJoin} className="flex flex-col items-center gap-4.5 w-full">
             {/* Room Code input */}
             <div className="w-full">
-              <div className="flex items-center justify-between font-label-sm text-xs text-[#9B9DA3] mb-1.5 px-1">
+              <div className="flex items-center justify-between font-label-sm text-xs text-[#c7c6cb] mb-1.5 px-1">
                 <span>ROOM CODE</span>
-                {isCheckingRoom && <span className="text-[#E8D8B8] animate-pulse">Checking...</span>}
-                {roomInfo && <span className="text-[#7ED6A5] font-semibold">Valid Room</span>}
+                {isCheckingRoom && <span className="text-[#ffb3af] animate-pulse">Checking...</span>}
+                {roomInfo && <span className="text-[#ffb3af] font-semibold">Valid Room</span>}
               </div>
               <input
                 type="text"
@@ -321,13 +327,13 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
                 onChange={handleRoomCodeInputChange}
                 placeholder="e.g. 8KX92LMQ"
                 id="room-code-input"
-                className="w-full h-11 text-center font-mono text-sm tracking-widest bg-[#181B21] border border-[#272A31] rounded-xl text-[#F5F3EE] focus:outline-none focus:border-[#E8D8B8] transition-all uppercase"
+                className="w-full h-11 text-center font-mono text-sm tracking-widest bg-[#111318] border border-white/10 rounded-xl text-[#e2e2e9] focus:outline-none focus:border-[#ffb3af] transition-all uppercase"
               />
             </div>
 
             {/* 6-Digit PIN Container */}
             <div className="w-full">
-              <div className="text-center font-label-sm text-xs text-[#9B9DA3] mb-2 uppercase tracking-wider font-mono">
+              <div className="text-center font-label-sm text-xs text-[#c7c6cb] mb-2 uppercase tracking-wider font-mono">
                 6-Digit Access PIN
               </div>
               <div className="flex justify-center items-center gap-1.5 sm:gap-2 w-full" onPaste={handlePaste}>
@@ -335,7 +341,9 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
                 {[0, 1, 2].map((idx) => (
                   <input
                     key={idx}
-                    ref={(el) => { inputRefs.current[idx] = el; }}
+                    ref={(el) => {
+                      inputRefs.current[idx] = el;
+                    }}
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -344,20 +352,22 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
                     onChange={(e) => handleDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
                     id={`pin-digit-${idx}`}
-                    className="w-10 h-12 sm:w-11 sm:h-13 bg-[#181B21] rounded-xl text-center font-mono text-lg font-bold text-[#F5F3EE] caret-[#E8D8B8] focus:outline-none focus:border-[#E8D8B8] border border-[#272A31] transition-all"
+                    className="w-10 h-12 sm:w-11 sm:h-13 bg-[#111318] rounded-xl text-center font-mono text-lg font-bold text-[#e2e2e9] caret-[#ffb3af] focus:outline-none focus:border-[#ffb3af] border border-white/10 transition-all"
                   />
                 ))}
 
                 {/* Spacer Dot */}
                 <div className="w-1.5 flex items-center justify-center">
-                  <span className="w-1.5 h-1.5 bg-[#272A31] rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-white/20 rounded-full"></span>
                 </div>
 
                 {/* Last 3 Digits */}
                 {[3, 4, 5].map((idx) => (
                   <input
                     key={idx}
-                    ref={(el) => { inputRefs.current[idx] = el; }}
+                    ref={(el) => {
+                      inputRefs.current[idx] = el;
+                    }}
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -366,7 +376,7 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
                     onChange={(e) => handleDigitChange(idx, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(idx, e)}
                     id={`pin-digit-${idx}`}
-                    className="w-10 h-12 sm:w-11 sm:h-13 bg-[#181B21] rounded-xl text-center font-mono text-lg font-bold text-[#F5F3EE] caret-[#E8D8B8] focus:outline-none focus:border-[#E8D8B8] border border-[#272A31] transition-all"
+                    className="w-10 h-12 sm:w-11 sm:h-13 bg-[#111318] rounded-xl text-center font-mono text-lg font-bold text-[#e2e2e9] caret-[#ffb3af] focus:outline-none focus:border-[#ffb3af] border border-white/10 transition-all"
                   />
                 ))}
               </div>
@@ -374,7 +384,7 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
 
             {/* Error Message */}
             {error && (
-              <div className="flex items-center gap-1.5 text-[#FF5C5C] bg-[#FF5C5C]/10 border border-[#FF5C5C]/20 px-3.5 py-1.5 rounded-full text-xs font-mono transition-all animate-fade-in">
+              <div className="flex items-center gap-1.5 text-[#ffb4ab] bg-[#93000a]/20 border border-[#ffb4ab]/30 px-3.5 py-1.5 rounded-full text-xs font-mono transition-all animate-fade-in">
                 <span className="material-symbols-outlined text-[15px]">error</span>
                 <span>{error}</span>
               </div>
@@ -385,7 +395,7 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
               type="submit"
               disabled={isJoining || pin.length !== 6 || !roomCode.trim()}
               id="join-submit-btn"
-              className="w-full h-12 bg-[#E8D8B8] text-[#121419] rounded-full font-label-md font-bold text-xs shadow-md hover:bg-[#F0E3C8] transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 mt-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="w-full h-12 bg-[#c7c6ca] hover:bg-[#e3e2e6] text-[#303034] rounded-full font-label-md font-bold text-sm shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 mt-1 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               {isJoining ? (
                 <span>Verifying Access...</span>
@@ -400,8 +410,8 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
         </div>
 
         {/* Security badge at bottom */}
-        <div className="mt-5 flex items-center gap-1.5 text-[#6E7179] text-xs font-mono">
-          <span className="material-symbols-outlined text-[#E8D8B8] text-[15px]">lock</span>
+        <div className="mt-5 flex items-center gap-1.5 text-[#909095] text-xs font-mono">
+          <span className="material-symbols-outlined text-[#c7c6ca] text-[15px]">lock</span>
           <span>End-to-End Encrypted · 2 Person Limit</span>
         </div>
       </div>

@@ -2,6 +2,9 @@ import React from 'react';
 import type { RoomStatus, SignalingStatus } from '../types';
 import { triggerHaptic } from '../utils/helpers';
 
+export const VELORA_SIGNATURE_LOGO =
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuDKnkdyj0JfOsDxLIKJLA3bL6omr2HZClagaqw0opPkNuRaLsWXfrRoBrWnfmT3DN6_cfxxdEh3HIlBlrqyg-wWaaFNUOwcoywY31rP1vRL8PP6XOEZS0pdVjsyUmBuGx_liS4jGy8AbkExOcIPNHIKFIY8TvWZwNQN4bHnRfzTc236uYkW9wD9C7mM9VUXY94-VXgF2lCB2f_fQ7iaaO6dUN2FaBw9z1nTz1TfS5nbAiN8QedvLwMH';
+
 interface NavbarProps {
   currentRoomCode?: string;
   roomStatus?: RoomStatus;
@@ -10,6 +13,7 @@ interface NavbarProps {
   pingLatency?: number | null;
   isLowDataActive?: boolean;
   unreadNotificationsCount?: number;
+  screenTitle?: string;
   onNavigateHome: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
@@ -24,127 +28,51 @@ export const Navbar: React.FC<NavbarProps> = ({
   pingLatency,
   isLowDataActive = false,
   unreadNotificationsCount = 0,
+  screenTitle = 'Home',
   onNavigateHome,
   onOpenProfile,
   onOpenSettings,
   onOpenNotifications,
 }) => {
-  // Dot & color styling based on signaling status
-  const statusConfig = {
-    connected: {
-      dotColor: 'bg-[#7ED6A5]',
-      textColor: 'text-[#9B9DA3] group-hover:text-[#F5F3EE]',
-      label: 'Secure Online',
-      borderColor: 'border-[#272A31] hover:border-[#E8D8B8]/40',
-      bgColor: 'bg-[#181B21]',
-    },
-    connecting: {
-      dotColor: 'bg-[#E8D8B8] animate-ping',
-      textColor: 'text-[#E8D8B8]',
-      label: 'Connecting...',
-      borderColor: 'border-[#E8D8B8]/40',
-      bgColor: 'bg-[#181B21]',
-    },
-    reconnecting: {
-      dotColor: 'bg-[#FF5C5C] animate-pulse',
-      textColor: 'text-[#FF5C5C]',
-      label: 'Reconnecting',
-      borderColor: 'border-[#FF5C5C]/40',
-      bgColor: 'bg-[#181B21]',
-    },
-    disconnected: {
-      dotColor: 'bg-[#FF5C5C]',
-      textColor: 'text-[#FF5C5C]',
-      label: 'Offline',
-      borderColor: 'border-[#FF5C5C]/40',
-      bgColor: 'bg-[#181B21]',
-    },
-  }[signalingStatus];
-
   return (
-    <header className="fixed top-0 w-full z-40 bg-[#0B0C0F]/90 backdrop-blur-xl pt-safe border-b border-[#272A31] select-none">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
-        {/* Left Side: Back button or Logo + Title */}
-        <div className="flex items-center gap-2.5 sm:gap-3 flex-shrink-0">
+    <header className="fixed top-0 w-full z-50 bg-[#111318]/85 backdrop-blur-xl pt-safe border-b border-white/[0.04] shadow-[0_1px_8px_rgba(0,0,0,0.15)] select-none">
+      <div className="h-16 flex items-center justify-between px-6 max-w-6xl mx-auto">
+        {/* Left: Signature Logo + Screen Title */}
+        <div className="flex items-center gap-3.5">
           {currentRoomCode ? (
             <button
               onClick={() => {
                 triggerHaptic('light');
                 onNavigateHome();
               }}
-              className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center text-[#9B9DA3] hover:text-[#F5F3EE] rounded-full hover:bg-[#181B21] transition-colors cursor-pointer"
+              className="w-9 h-9 flex items-center justify-center text-[#909095] hover:text-[#e2e2e9] rounded-full hover:bg-[#1e2025] transition-colors cursor-pointer mr-1"
               title="Return Home"
             >
-              <span className="material-symbols-outlined text-[18px] sm:text-[20px]">arrow_back</span>
+              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
             </button>
           ) : null}
 
-          {/* Velora Logo & Title */}
           <button
             onClick={() => {
               triggerHaptic('light');
               onNavigateHome();
             }}
-            className="flex items-center gap-2 text-left cursor-pointer focus:outline-none group"
+            className="flex items-center gap-3.5 cursor-pointer focus:outline-none group text-left"
             id="brand-logo-btn"
           >
-            <span className="font-editorial text-xl sm:text-2xl tracking-tight text-[#F5F3EE] group-hover:text-[#E8D8B8] transition-colors">
-              Velora
+            <img
+              src={VELORA_SIGNATURE_LOGO}
+              alt="Velora Signature Logo"
+              className="h-7 w-auto object-contain transition-transform group-hover:scale-105"
+            />
+            <span className="font-display-sm text-[22px] tracking-tight text-[#e2e2e9] leading-none">
+              {screenTitle}
             </span>
           </button>
         </div>
 
-        {/* Right actions: Connection Pill, Room Status & Settings/Profile Buttons */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
-          {/* Connection / Signaling Status Pill */}
-          <button
-            type="button"
-            onClick={() => {
-              triggerHaptic('light');
-              if (onOpenSettings) onOpenSettings();
-            }}
-            className={`group flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1 rounded-full border text-[10px] font-mono transition-all cursor-pointer ${statusConfig.bgColor} ${statusConfig.borderColor}`}
-            title={`Signaling Status: ${statusConfig.label}${
-              pingLatency ? ` (${pingLatency}ms ping)` : ''
-            }${isLowDataActive ? ' • Low Data Active' : ''}`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotColor}`} />
-            <span className={`font-semibold tracking-wider uppercase font-mono text-[9px] ${statusConfig.textColor} transition-colors`}>
-              {statusConfig.label}
-            </span>
-            {isLowDataActive && (
-              <span className="hidden md:inline text-[8px] bg-[#E8D8B8]/15 text-[#E8D8B8] px-1 py-0.2 rounded-full border border-[#E8D8B8]/30 font-mono">
-                Low Data
-              </span>
-            )}
-            {signalingStatus === 'connected' && pingLatency !== null && pingLatency !== undefined && (
-              <span className="hidden sm:inline text-[9px] text-[#6E7179] border-l border-[#272A31] pl-1.5 font-mono">
-                {pingLatency}ms
-              </span>
-            )}
-          </button>
-
-          {/* Active Room Badge (when inside a room) */}
-          {currentRoomCode && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#181B21] border border-[#272A31] rounded-full">
-              <span className="relative flex h-1.5 w-1.5">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    memberCount === 2 ? 'bg-[#7ED6A5]' : 'bg-[#E8D8B8]'
-                  }`}
-                ></span>
-                <span
-                  className={`relative inline-flex rounded-full h-1.5 w-1.5 ${
-                    memberCount === 2 ? 'bg-[#7ED6A5]' : 'bg-[#E8D8B8]'
-                  }`}
-                ></span>
-              </span>
-              <span className="font-mono text-[10px] text-[#9B9DA3]">
-                {memberCount ?? 1}/2
-              </span>
-            </div>
-          )}
-
+        {/* Right Action Icons: Notification Center & Person Profile */}
+        <div className="flex items-center gap-2.5">
           {/* Notification Center button */}
           {onOpenNotifications && (
             <button
@@ -153,12 +81,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onOpenNotifications();
               }}
               id="navbar-notifications-btn"
-              className="relative w-8 h-8 rounded-full bg-[#181B21] border border-[#272A31] text-[#9B9DA3] hover:text-[#F5F3EE] hover:border-[#E8D8B8]/60 flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
+              className="relative w-10 h-10 rounded-full bg-[#1e2025] border border-[#46464b]/30 text-[#c7c6cb] hover:text-[#e2e2e9] hover:bg-[#282a2f] flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-sm"
               title="Notification Center"
             >
-              <span className="material-symbols-outlined text-[17px]">notifications</span>
+              <span className="material-symbols-outlined text-[19px]">notifications</span>
               {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#FF5C5C] text-[#F5F3EE] font-mono text-[9px] font-bold flex items-center justify-center border border-[#0B0C0F]">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#ffb3af] text-[#230002] font-mono text-[9px] font-bold flex items-center justify-center shadow-md">
                   {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
                 </span>
               )}
@@ -173,10 +101,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onOpenProfile();
               }}
               id="navbar-profile-btn"
-              className="w-8 h-8 rounded-full bg-[#181B21] border border-[#272A31] text-[#E8D8B8] hover:border-[#E8D8B8]/60 flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
-              title="Private Settings & Session"
+              className="w-10 h-10 rounded-full bg-[#33353a] hover:bg-[#37393f] flex items-center justify-center text-[#e2e2e9] transition-all cursor-pointer shadow-sm active:scale-95"
+              title="Profile & Settings"
             >
-              <span className="material-symbols-outlined text-[17px]">person</span>
+              <span className="material-symbols-outlined text-[20px]">person</span>
             </button>
           )}
         </div>

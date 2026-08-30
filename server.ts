@@ -10,6 +10,7 @@ import type {
   MemberRole,
   RoomInfo,
   MessageItem,
+  ReplyPreview,
   CallSignalPayload,
   WebSocketClientMessage,
   WebSocketServerMessage,
@@ -17,9 +18,19 @@ import type {
 } from "./src/types";
 
 // Initialize VAPID Keys for Web Push
-const vapidKeys = webpush.generateVAPIDKeys();
+const envVapidPublic = process.env.VAPID_PUBLIC_KEY;
+const envVapidPrivate = process.env.VAPID_PRIVATE_KEY;
+const envVapidSubject = process.env.VAPID_SUBJECT || "mailto:notifications@velora.chat";
+
+let vapidKeys: { publicKey: string; privateKey: string };
+if (envVapidPublic && envVapidPrivate) {
+  vapidKeys = { publicKey: envVapidPublic, privateKey: envVapidPrivate };
+} else {
+  vapidKeys = webpush.generateVAPIDKeys();
+}
+
 webpush.setVapidDetails(
-  "mailto:notifications@velora.chat",
+  envVapidSubject,
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );
@@ -57,6 +68,30 @@ interface SocketClient {
   role: MemberRole;
   sessionId: string;
   isAlive: boolean;
+  isVisible: boolean;
+  activeScreen: string;
+}
+
+interface StoredPushSubscription {
+  id: string;
+  sessionId: string;
+  roomCode: string;
+  role: MemberRole;
+  deviceId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  subscription: webpush.PushSubscription;
+  createdAt: number;
+  lastUsedAt: number;
+  revokedAt?: number;
+  preferences?: {
+    enabled?: boolean;
+    messagePreviews?: boolean;
+    voiceMessages?: boolean;
+    audioCalls?: boolean;
+    roomActivity?: boolean;
+  };
 }
 
 // In-memory data storage
@@ -65,35 +100,139 @@ const sessions = new Map<string, StoredSession>(); // keyed by sessionId
 const messages = new Map<string, MessageItem[]>(); // keyed by roomCode
 const pinAttempts = new Map<string, { count: number; lockedUntil: number }>(); // keyed by ip_roomCode
 const activeSockets = new Map<WebSocket, SocketClient>();
-const pushSubscriptions = new Map<string, { roomCode: string; subscription: webpush.PushSubscription; role: MemberRole }>();
+const pushSubscriptions = new Map<string, StoredPushSubscription>(); // keyed by subscription endpoint
+
+// Helper to determine if recipient is actively in the chat view with visible window
+function isRecipientActivelyViewing(roomCode: string, recipientRole: MemberRole): boolean {
+  const normalizedCode = normalizeRoomCode(roomCode);
+  for (const [ws, client] of activeSockets.entries()) {
+    if (
+      normalizeRoomCode(client.roomCode) === normalizedCode &&
+      client.role === recipientRole &&
+      ws.readyState === WebSocket.OPEN &&
+      client.isVisible &&
+      client.activeScreen === "CHAT"
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // Notification Dispatcher
 async function sendVeloraNotification(
   roomCode: string,
   senderRole: MemberRole | null,
   notification: VeloraNotification,
-  excludeSessionId?: string
+  excludeSessionId?: string,
+  options?: {
+    previewText?: string;
+    forcePush?: boolean;
+  }
 ) {
-  // 1. Broadcast over WebSocket
-  broadcastToRoom(roomCode, {
+  const normalizedCode = normalizeRoomCode(roomCode);
+  const room = findRoom(normalizedCode);
+  if (!room || room.status === "EXPIRED" || room.status === "CLOSED") {
+    return;
+  }
+
+  const now = Date.now();
+  const eventId = notification.id || `evt_${now}_${crypto.randomBytes(4).toString("hex")}`;
+  const enrichedNotification: VeloraNotification = {
+    ...notification,
+    id: eventId,
+  };
+
+  // 1. Broadcast over WebSocket to any active connections
+  broadcastToRoom(normalizedCode, {
     type: "notification:event",
-    notification,
+    notification: enrichedNotification,
   });
 
-  // 2. Send Web Push to subscribed peers
-  for (const [sessionId, subData] of pushSubscriptions.entries()) {
+  // Determine recipient role
+  const recipientRole: MemberRole | null =
+    senderRole === "owner" ? "guest" : senderRole === "guest" ? "owner" : null;
+
+  // 2. Check if recipient is actively in foreground chat view
+  const isViewingForeground = recipientRole ? isRecipientActivelyViewing(normalizedCode, recipientRole) : false;
+
+  // If actively viewing chat in foreground, skip background system push
+  if (isViewingForeground && !options?.forcePush) {
+    return;
+  }
+
+  // 3. Dispatch Web Push to backgrounded/closed devices
+  for (const [endpointKey, subRecord] of pushSubscriptions.entries()) {
     if (
-      subData.roomCode.toUpperCase() === roomCode.toUpperCase() &&
-      sessionId !== excludeSessionId
+      normalizeRoomCode(subRecord.roomCode) === normalizedCode &&
+      (!excludeSessionId || subRecord.sessionId !== excludeSessionId) &&
+      (!recipientRole || subRecord.role === recipientRole) &&
+      !subRecord.revokedAt
     ) {
+      // Check user preferences
+      const prefs = subRecord.preferences;
+      if (prefs) {
+        if (prefs.enabled === false) continue;
+        if (notification.type === "VOICE" && prefs.voiceMessages === false) continue;
+        if ((notification.type === "CALL" || notification.type === "MISSED_CALL") && prefs.audioCalls === false) continue;
+        if ((notification.type === "ROOM_JOINED" || notification.type === "PARTICIPANT_LEFT" || notification.type === "ROOM_EXPIRING") && prefs.roomActivity === false) continue;
+      }
+
+      // Privacy-first title & body construction
+      let pushTitle = "VELORA";
+      let pushBody = "New message\nPrivate Space";
+
+      if (notification.type === "MESSAGE") {
+        if (prefs?.messagePreviews && options?.previewText) {
+          const cleanSnippet = options.previewText.replace(/\n+/g, " ").trim();
+          pushBody = `New message\n"${cleanSnippet.length > 60 ? cleanSnippet.slice(0, 60) + '...' : cleanSnippet}"`;
+        } else {
+          pushBody = "New message\nPrivate Space";
+        }
+      } else if (notification.type === "VOICE") {
+        if (prefs?.messagePreviews && notification.duration) {
+          const mins = Math.floor(notification.duration / 60);
+          const secs = Math.floor(notification.duration % 60);
+          pushBody = `New voice message · ${mins}:${secs.toString().padStart(2, '0')}`;
+        } else {
+          pushBody = "New voice message\nPrivate Space";
+        }
+      } else if (notification.type === "CALL") {
+        pushBody = "Incoming private audio call";
+      } else if (notification.type === "MISSED_CALL") {
+        pushBody = "Missed audio call\nPrivate Space";
+      } else if (notification.type === "ROOM_JOINED") {
+        pushBody = "Private Space · Your private room is now connected.";
+      } else if (notification.type === "PARTICIPANT_LEFT") {
+        pushBody = "Private Space · The other participant has left the room.";
+      } else if (notification.type === "ROOM_EXPIRING") {
+        pushBody = notification.body || "Private Space is expiring soon.";
+      } else {
+        pushBody = notification.body || "New update in your private space";
+      }
+
+      const pushPayload = JSON.stringify({
+        eventId,
+        type: notification.type,
+        title: pushTitle,
+        body: pushBody,
+        roomCode: normalizedCode,
+        messageId: notification.messageId,
+        callId: notification.callId,
+        expiresAt: notification.expiresAt,
+        timestamp: notification.timestamp || now,
+        actionUrl: `/?room=${encodeURIComponent(normalizedCode)}${notification.messageId ? `&msgId=${encodeURIComponent(notification.messageId)}` : ""}${notification.type === "CALL" ? "&call=incoming" : ""}`,
+      });
+
       try {
-        await webpush.sendNotification(
-          subData.subscription,
-          JSON.stringify(notification)
-        );
+        subRecord.lastUsedAt = now;
+        await webpush.sendNotification(subRecord.subscription, pushPayload);
       } catch (err: any) {
         if (err.statusCode === 410 || err.statusCode === 404) {
-          pushSubscriptions.delete(sessionId);
+          // Subscription revoked/expired -> drop from registry
+          pushSubscriptions.delete(endpointKey);
+        } else {
+          console.warn("Web push delivery notice:", err.message || err);
         }
       }
     }
@@ -207,8 +346,78 @@ function cleanupExpiredData() {
 
       // Clean up messages and media
       messages.delete(code);
+
+      // Invalidate and remove all push subscriptions for this expired room
+      for (const [subKey, sub] of pushSubscriptions.entries()) {
+        if (sub.roomCode.toUpperCase() === code.toUpperCase()) {
+          pushSubscriptions.delete(subKey);
+        }
+      }
     }
   }
+}
+
+// Helper to check if a message is expired according to current time
+function isMessageExpiredServer(msg: MessageItem, now = Date.now()): boolean {
+  if (msg.isBurned) return true;
+  if (typeof msg.expiresAt === "number" && msg.expiresAt <= now) return true;
+  if (
+    msg.burnOnRead &&
+    msg.viewedAt &&
+    typeof msg.burnAfterSeconds === "number" &&
+    msg.burnAfterSeconds > 0 &&
+    msg.viewedAt + msg.burnAfterSeconds * 1000 <= now
+  ) {
+    return true;
+  }
+  if (
+    !msg.burnOnRead &&
+    typeof msg.burnAfterSeconds === "number" &&
+    msg.burnAfterSeconds > 0 &&
+    msg.createdAt + msg.burnAfterSeconds * 1000 <= now
+  ) {
+    return true;
+  }
+  return false;
+}
+
+// Compute safe reply preview that never leaks expired content
+function resolveSafeReplyPreview(
+  roomCode: string,
+  replyToMessageId: string,
+  now = Date.now()
+): ReplyPreview {
+  const roomMessages = messages.get(roomCode) || [];
+  const target = roomMessages.find((m) => m.id === replyToMessageId);
+
+  if (!target || isMessageExpiredServer(target, now)) {
+    return {
+      messageId: replyToMessageId,
+      senderRole: 'owner',
+      type: 'TEXT',
+      previewText: 'Original message expired',
+      isUnavailable: true,
+    };
+  }
+
+  let previewText: string | undefined = undefined;
+  if (target.type === 'TEXT') {
+    // Truncate to maximum 120 chars for quoted preview
+    previewText = target.textContent ? target.textContent.slice(0, 120) : undefined;
+  } else if (target.type === 'VOICE') {
+    previewText = 'Voice message';
+  } else if (target.type === 'IMAGE') {
+    previewText = 'Photo';
+  }
+
+  return {
+    messageId: target.id,
+    senderRole: target.senderRole,
+    type: target.type,
+    previewText,
+    duration: target.duration,
+    isUnavailable: false,
+  };
 }
 
 // Clean up expired messages for a specific room
@@ -394,24 +603,55 @@ async function startServer() {
   app.post("/api/notifications/subscribe", requireSession, (req, res) => {
     const session = (req as any).session as StoredSession;
     const room = (req as any).room as StoredRoom;
-    const { subscription } = req.body;
+    const { subscription, deviceId, preferences } = req.body;
 
-    if (!subscription || !subscription.endpoint) {
+    if (!subscription || !subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
       return res.status(400).json({ error: "Invalid push subscription object" });
     }
 
-    pushSubscriptions.set(session.sessionId, {
+    const endpointKey = subscription.endpoint;
+    const now = Date.now();
+
+    pushSubscriptions.set(endpointKey, {
+      id: crypto.randomUUID(),
+      sessionId: session.sessionId,
       roomCode: room.roomCode,
-      subscription,
       role: session.role,
+      deviceId: deviceId || crypto.randomUUID(),
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+      subscription,
+      createdAt: now,
+      lastUsedAt: now,
+      preferences: preferences || undefined,
     });
+
+    return res.json({ success: true, subscribed: true });
+  });
+
+  app.post("/api/notifications/preferences", requireSession, (req, res) => {
+    const session = (req as any).session as StoredSession;
+    const { preferences } = req.body;
+
+    for (const [key, sub] of pushSubscriptions.entries()) {
+      if (sub.sessionId === session.sessionId) {
+        sub.preferences = preferences;
+      }
+    }
 
     return res.json({ success: true });
   });
 
   app.post("/api/notifications/unsubscribe", requireSession, (req, res) => {
     const session = (req as any).session as StoredSession;
-    pushSubscriptions.delete(session.sessionId);
+    const { deviceId } = req.body;
+
+    for (const [key, sub] of pushSubscriptions.entries()) {
+      if (sub.sessionId === session.sessionId && (!deviceId || sub.deviceId === deviceId)) {
+        pushSubscriptions.delete(key);
+      }
+    }
     return res.json({ success: true });
   });
 
@@ -419,16 +659,22 @@ async function startServer() {
     const session = (req as any).session as StoredSession;
     const room = (req as any).room as StoredRoom;
 
-    sendVeloraNotification(room.roomCode, session.role, {
-      id: "test-" + Date.now(),
-      type: "MESSAGE",
-      title: "VELORA",
-      body: "New message from your private space",
-      roomCode: room.roomCode,
-      senderRole: session.role,
-      timestamp: Date.now(),
-      read: false,
-    });
+    sendVeloraNotification(
+      room.roomCode,
+      session.role,
+      {
+        id: "test-" + Date.now(),
+        type: "MESSAGE",
+        title: "VELORA",
+        body: "New message from your private space",
+        roomCode: room.roomCode,
+        senderRole: session.role,
+        timestamp: Date.now(),
+        read: false,
+      },
+      undefined,
+      { forcePush: true, previewText: "Hey, are you free?" }
+    );
 
     return res.json({ success: true });
   });
@@ -654,9 +900,17 @@ async function startServer() {
             effectiveExpiresAt = room.expiresAt;
           }
         }
+
+        // Dynamically compute safe reply preview to ensure expired messages are never resurrected
+        let replyPreview = m.replyPreview;
+        if (m.replyToMessageId) {
+          replyPreview = resolveSafeReplyPreview(room.roomCode, m.replyToMessageId, now);
+        }
+
         return {
           ...m,
           expiresAt: effectiveExpiresAt,
+          replyPreview,
         };
       })
       .filter((m) => !m.expiresAt || m.expiresAt > now);
@@ -698,7 +952,7 @@ async function startServer() {
     });
   });
 
-  // 6. Send Message with configurable expiration timer & burn-on-read
+  // 6. Send Message with configurable expiration timer & burn-on-read & reply support
   app.post("/api/rooms/:roomCode/messages", requireSession, (req, res) => {
     const session = (req as any).session as StoredSession;
     const room = (req as any).room as StoredRoom;
@@ -710,6 +964,7 @@ async function startServer() {
       viewMode,
       burnAfterSeconds,
       burnOnRead,
+      replyToMessageId,
     } = req.body;
 
     const normalizedType = (type || "").toString().toUpperCase() as "TEXT" | "VOICE" | "IMAGE";
@@ -718,6 +973,21 @@ async function startServer() {
     }
 
     const now = Date.now();
+    const roomMessages = messages.get(room.roomCode) || [];
+
+    // Validate replyToMessageId if provided
+    let validatedReplyToMessageId: string | undefined = undefined;
+    let validatedReplyPreview: ReplyPreview | undefined = undefined;
+
+    if (replyToMessageId && typeof replyToMessageId === "string") {
+      const targetMsg = roomMessages.find((m) => m.id === replyToMessageId.trim());
+      if (!targetMsg || isMessageExpiredServer(targetMsg, now)) {
+        return res.status(400).json({ error: "This message is no longer available." });
+      }
+      validatedReplyToMessageId = targetMsg.id;
+      validatedReplyPreview = resolveSafeReplyPreview(room.roomCode, targetMsg.id, now);
+    }
+
     let computedBurnAfter = typeof burnAfterSeconds === "number" ? burnAfterSeconds : undefined;
     let computedBurnOnRead = Boolean(burnOnRead);
 
@@ -763,9 +1033,10 @@ async function startServer() {
       isBurned: false,
       createdAt: now,
       delivered: true,
+      replyToMessageId: validatedReplyToMessageId,
+      replyPreview: validatedReplyPreview,
     };
 
-    const roomMessages = messages.get(room.roomCode) || [];
     roomMessages.push(newMessage);
     messages.set(room.roomCode, roomMessages);
 
@@ -777,6 +1048,14 @@ async function startServer() {
 
     // Send push / background notification to peer
     const notifType = normalizedType === "VOICE" ? "VOICE" : "MESSAGE";
+    const notifBody = validatedReplyToMessageId
+      ? notifType === "VOICE"
+        ? "New voice reply in your private space"
+        : "Replied to a message in your private space"
+      : notifType === "VOICE"
+      ? "New voice message"
+      : "New message from your private space";
+
     sendVeloraNotification(
       room.roomCode,
       session.role,
@@ -784,7 +1063,7 @@ async function startServer() {
         id: "msg-" + newMessage.id,
         type: notifType,
         title: "VELORA",
-        body: notifType === "VOICE" ? "New voice message" : "New message from your private space",
+        body: notifBody,
         roomCode: room.roomCode,
         senderRole: session.role,
         messageId: newMessage.id,
@@ -793,7 +1072,8 @@ async function startServer() {
         duration: newMessage.duration,
         read: false,
       },
-      session.sessionId
+      session.sessionId,
+      { previewText: textContent }
     );
 
     return res.status(201).json({ success: true, message: newMessage });
@@ -917,6 +1197,16 @@ async function startServer() {
     session.revokedAt = Date.now();
     sessions.delete(session.sessionId);
 
+    // Remove push subscriptions for this participant
+    for (const [key, sub] of pushSubscriptions.entries()) {
+      if (
+        sub.sessionId === session.sessionId ||
+        (sub.roomCode.toUpperCase() === room.roomCode.toUpperCase() && sub.role === session.role)
+      ) {
+        pushSubscriptions.delete(key);
+      }
+    }
+
     if (session.role === "owner" && room.ownerSessionId === session.sessionId) {
       room.ownerSessionId = null;
     } else if (session.role === "guest" && room.guestSessionId === session.sessionId) {
@@ -971,6 +1261,13 @@ async function startServer() {
 
     // Wipe messages
     messages.delete(room.roomCode);
+
+    // Invalidate and remove all push subscriptions for this room
+    for (const [key, sub] of pushSubscriptions.entries()) {
+      if (sub.roomCode.toUpperCase() === room.roomCode.toUpperCase()) {
+        pushSubscriptions.delete(key);
+      }
+    }
 
     broadcastToRoom(room.roomCode, {
       type: "room:closed",
@@ -1048,6 +1345,8 @@ async function startServer() {
             role: session.role,
             sessionId: sessionToken,
             isAlive: true,
+            isVisible: true,
+            activeScreen: "CHAT",
           };
 
           activeSockets.set(ws, clientInfo);
@@ -1069,6 +1368,14 @@ async function startServer() {
         if (!clientInfo) {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: "error", message: "Not authenticated" }));
+          }
+          return;
+        }
+
+        if (msg.type === "visibility") {
+          clientInfo.isVisible = Boolean(msg.isVisible);
+          if (msg.activeScreen) {
+            clientInfo.activeScreen = String(msg.activeScreen);
           }
           return;
         }
@@ -1116,7 +1423,8 @@ async function startServer() {
                 timestamp: Date.now(),
                 read: false,
               },
-              clientInfo.sessionId
+              clientInfo.sessionId,
+              { forcePush: true }
             );
           } else if (payload.type === "call:end" || payload.type === "call:busy" || payload.type === "call:reject") {
             if ((payload as any).wasMissed) {

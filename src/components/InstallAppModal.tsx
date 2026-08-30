@@ -63,27 +63,27 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
   return (
     <div
       id="install-app-modal-backdrop"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B0C0F]/80 backdrop-blur-md animate-fade-in select-none"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#111318]/80 backdrop-blur-md animate-fade-in select-none"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-[#121419] border border-[#272A31] rounded-[28px] max-w-md w-full overflow-hidden shadow-2xl text-[#F5F3EE] animate-scale-up">
+      <div className="bg-[#1e2025] border border-white/5 rounded-[28px] max-w-md w-full overflow-hidden shadow-2xl text-[#e2e2e9] animate-scale-up">
         {/* Modal Header */}
-        <div className="p-4 border-b border-[#272A31] flex items-center justify-between bg-[#181B21]">
+        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-[#111318]">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-[#121419] border border-[#272A31] flex items-center justify-center text-[#E8D8B8]">
+            <div className="w-9 h-9 rounded-full bg-[#1e2025] border border-white/5 flex items-center justify-center text-[#ffb3af]">
               <span className="material-symbols-outlined text-[18px]">install_mobile</span>
             </div>
             <div>
-              <h2 className="font-editorial text-base text-[#F5F3EE] flex items-center gap-2">
+              <h2 className="font-display-sm text-base text-[#e2e2e9] flex items-center gap-2">
                 <span>Install Standalone</span>
-                <span className="text-[9px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#E8D8B8]/15 text-[#E8D8B8] border border-[#E8D8B8]/30">
+                <span className="text-[9px] uppercase font-mono px-2 py-0.5 rounded-full bg-[#ffb3af]/15 text-[#ffb3af] border border-[#ffb3af]/30">
                   PWA
                 </span>
               </h2>
-              <p className="font-body-sm text-[11px] text-[#9B9DA3]">
-                Zero browser chrome & hardware haptics
+              <p className="font-body-md text-[11px] text-[#c7c6cb]">
+                Zero browser chrome &amp; hardware haptics
               </p>
             </div>
           </div>
@@ -92,7 +92,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               triggerHaptic('light');
               onClose();
             }}
-            className="w-8 h-8 rounded-full bg-[#121419] hover:bg-[#272A31] text-[#9B9DA3] hover:text-[#F5F3EE] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#1e2025] hover:bg-[#282a2f] text-[#c7c6cb] hover:text-[#e2e2e9] flex items-center justify-center transition-colors cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">close</span>
           </button>
@@ -102,31 +102,31 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
         <div className="p-4.5 space-y-3.5">
           {/* Key Advantages */}
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="p-2.5 rounded-xl bg-[#181B21] border border-[#272A31] flex flex-col items-center gap-0.5">
-              <span className="material-symbols-outlined text-[#E8D8B8] text-[16px]">shield</span>
-              <span className="font-label-md text-[10px] font-bold text-[#F5F3EE]">Zero Logs</span>
-              <span className="font-body-sm text-[9px] text-[#9B9DA3]">No telemetry</span>
+            <div className="p-2.5 rounded-xl bg-[#111318] border border-white/5 flex flex-col items-center gap-0.5">
+              <span className="material-symbols-outlined text-[#ffb3af] text-[16px]">shield</span>
+              <span className="font-label-md text-[10px] font-bold text-[#e2e2e9]">Zero Logs</span>
+              <span className="font-body-md text-[9px] text-[#909095]">No telemetry</span>
             </div>
-            <div className="p-2.5 rounded-xl bg-[#181B21] border border-[#272A31] flex flex-col items-center gap-0.5">
-              <span className="material-symbols-outlined text-[#E8D8B8] text-[16px]">fullscreen</span>
-              <span className="font-label-md text-[10px] font-bold text-[#F5F3EE]">Full Screen</span>
-              <span className="font-body-sm text-[9px] text-[#9B9DA3]">Native layout</span>
+            <div className="p-2.5 rounded-xl bg-[#111318] border border-white/5 flex flex-col items-center gap-0.5">
+              <span className="material-symbols-outlined text-[#ffb3af] text-[16px]">fullscreen</span>
+              <span className="font-label-md text-[10px] font-bold text-[#e2e2e9]">Full Screen</span>
+              <span className="font-body-md text-[9px] text-[#909095]">Native layout</span>
             </div>
-            <div className="p-2.5 rounded-xl bg-[#181B21] border border-[#272A31] flex flex-col items-center gap-0.5">
-              <span className="material-symbols-outlined text-[#E8D8B8] text-[16px]">bolt</span>
-              <span className="font-label-md text-[10px] font-bold text-[#F5F3EE]">Instant</span>
-              <span className="font-body-sm text-[9px] text-[#9B9DA3]">Home dock</span>
+            <div className="p-2.5 rounded-xl bg-[#111318] border border-white/5 flex flex-col items-center gap-0.5">
+              <span className="material-symbols-outlined text-[#ffb3af] text-[16px]">bolt</span>
+              <span className="font-label-md text-[10px] font-bold text-[#e2e2e9]">Instant</span>
+              <span className="font-body-md text-[9px] text-[#909095]">Home dock</span>
             </div>
           </div>
 
           {/* Platform Tab Selector */}
-          <div className="flex rounded-full bg-[#181B21] p-0.5 border border-[#272A31] font-label-md text-xs">
+          <div className="flex rounded-full bg-[#111318] p-0.5 border border-white/5 font-label-md text-xs">
             <button
               onClick={() => setPlatform('ios')}
               className={`flex-1 py-1.5 rounded-full transition-all cursor-pointer text-xs ${
                 platform === 'ios'
-                  ? 'bg-[#E8D8B8] text-[#121419] font-bold shadow-xs'
-                  : 'text-[#9B9DA3] hover:text-[#F5F3EE]'
+                  ? 'bg-[#c7c6ca] text-[#303034] font-bold shadow-xs'
+                  : 'text-[#909095] hover:text-[#e2e2e9]'
               }`}
             >
               iOS Safari
@@ -135,8 +135,8 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               onClick={() => setPlatform('android')}
               className={`flex-1 py-1.5 rounded-full transition-all cursor-pointer text-xs ${
                 platform === 'android'
-                  ? 'bg-[#E8D8B8] text-[#121419] font-bold shadow-xs'
-                  : 'text-[#9B9DA3] hover:text-[#F5F3EE]'
+                  ? 'bg-[#c7c6ca] text-[#303034] font-bold shadow-xs'
+                  : 'text-[#909095] hover:text-[#e2e2e9]'
               }`}
             >
               Android
@@ -145,8 +145,8 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               onClick={() => setPlatform('desktop')}
               className={`flex-1 py-1.5 rounded-full transition-all cursor-pointer text-xs ${
                 platform === 'desktop'
-                  ? 'bg-[#E8D8B8] text-[#121419] font-bold shadow-xs'
-                  : 'text-[#9B9DA3] hover:text-[#F5F3EE]'
+                  ? 'bg-[#c7c6ca] text-[#303034] font-bold shadow-xs'
+                  : 'text-[#909095] hover:text-[#e2e2e9]'
               }`}
             >
               Desktop
@@ -155,27 +155,27 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
 
           {/* Platform Instructions */}
           {platform === 'ios' && (
-            <div className="bg-[#181B21] border border-[#272A31] rounded-xl p-3.5 space-y-2.5 font-body-sm text-xs">
-              <div className="text-[#F5F3EE] font-semibold flex items-center gap-1.5 text-xs">
+            <div className="bg-[#111318] border border-white/5 rounded-xl p-3.5 space-y-2.5 font-body-md text-xs">
+              <div className="text-[#e2e2e9] font-semibold flex items-center gap-1.5 text-xs">
                 <span>Installing on iPhone / iPad:</span>
               </div>
-              <ol className="space-y-1.5 text-[#9B9DA3] list-none leading-relaxed text-[11px]">
+              <ol className="space-y-1.5 text-[#c7c6cb] list-none leading-relaxed text-[11px]">
                 <li className="flex items-center gap-2">
-                  <span className="flex-shrink-0 w-3.5 text-[#E8D8B8] font-bold">1.</span>
+                  <span className="flex-shrink-0 w-3.5 text-[#ffb3af] font-bold">1.</span>
                   <span>
-                    Tap the <strong className="text-[#F5F3EE]">Share</strong> icon at the bottom bar of Safari.
+                    Tap the <strong className="text-[#e2e2e9]">Share</strong> icon at the bottom bar of Safari.
                   </span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="flex-shrink-0 w-3.5 text-[#E8D8B8] font-bold">2.</span>
+                  <span className="flex-shrink-0 w-3.5 text-[#ffb3af] font-bold">2.</span>
                   <span>
-                    Scroll and select <strong className="text-[#F5F3EE]">Add to Home Screen</strong>.
+                    Scroll and select <strong className="text-[#e2e2e9]">Add to Home Screen</strong>.
                   </span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="flex-shrink-0 w-3.5 text-[#E8D8B8] font-bold">3.</span>
+                  <span className="flex-shrink-0 w-3.5 text-[#ffb3af] font-bold">3.</span>
                   <span>
-                    Tap <strong className="text-[#F5F3EE]">Add</strong> in top-right corner.
+                    Tap <strong className="text-[#e2e2e9]">Add</strong> in top-right corner.
                   </span>
                 </li>
               </ol>
@@ -183,33 +183,33 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
           )}
 
           {platform === 'android' && (
-            <div className="bg-[#181B21] border border-[#272A31] rounded-xl p-3.5 space-y-2.5 font-body-sm text-xs">
-              <div className="text-[#F5F3EE] font-semibold flex items-center justify-between text-xs">
+            <div className="bg-[#111318] border border-white/5 rounded-xl p-3.5 space-y-2.5 font-body-md text-xs">
+              <div className="text-[#e2e2e9] font-semibold flex items-center justify-between text-xs">
                 <span>Android Chrome / Samsung Internet:</span>
               </div>
               {deferredPrompt ? (
                 <div className="space-y-2">
-                  <p className="text-[11px] text-[#9B9DA3]">
+                  <p className="text-[11px] text-[#c7c6cb]">
                     Ready to install! Tap below to add to your home launcher.
                   </p>
                   <button
                     onClick={handleInstallClick}
                     disabled={installing}
-                    className="w-full py-3 bg-[#E8D8B8] hover:bg-[#F0E3C8] text-[#121419] font-label-md font-bold rounded-full text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95"
+                    className="w-full py-3 bg-[#c7c6ca] hover:bg-[#e3e2e6] text-[#303034] font-label-md font-bold rounded-full text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition-all active:scale-95"
                   >
                     <span className="material-symbols-outlined text-[16px]">download</span>
                     <span>{installing ? 'Installing App...' : '1-Tap Install'}</span>
                   </button>
                 </div>
               ) : (
-                <ol className="space-y-1.5 text-[#9B9DA3] list-none leading-relaxed text-[11px]">
+                <ol className="space-y-1.5 text-[#c7c6cb] list-none leading-relaxed text-[11px]">
                   <li className="flex items-center gap-2">
-                    <span className="text-[#E8D8B8] font-bold">1.</span>
-                    <span>Tap the menu <strong className="text-[#F5F3EE]">(⋮)</strong> in Chrome.</span>
+                    <span className="text-[#ffb3af] font-bold">1.</span>
+                    <span>Tap the menu <strong className="text-[#e2e2e9]">(⋮)</strong> in Chrome.</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <span className="text-[#E8D8B8] font-bold">2.</span>
-                    <span>Select <strong className="text-[#F5F3EE]">Install app</strong> or <strong className="text-[#F5F3EE]">Add to Home screen</strong>.</span>
+                    <span className="text-[#ffb3af] font-bold">2.</span>
+                    <span>Select <strong className="text-[#e2e2e9]">Install app</strong> or <strong className="text-[#e2e2e9]">Add to Home screen</strong>.</span>
                   </li>
                 </ol>
               )}
@@ -217,30 +217,30 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
           )}
 
           {platform === 'desktop' && (
-            <div className="bg-[#181B21] border border-[#272A31] rounded-xl p-3.5 space-y-2.5 font-body-sm text-xs">
-              <div className="text-[#F5F3EE] font-semibold flex items-center justify-between text-xs">
+            <div className="bg-[#111318] border border-white/5 rounded-xl p-3.5 space-y-2.5 font-body-md text-xs">
+              <div className="text-[#e2e2e9] font-semibold flex items-center justify-between text-xs">
                 <span>Desktop or Mobile Link:</span>
               </div>
               {deferredPrompt ? (
                 <button
                   onClick={handleInstallClick}
-                  className="w-full py-2.5 bg-[#E8D8B8] text-[#121419] font-label-md font-bold rounded-full text-xs flex items-center justify-center gap-1.5 hover:bg-[#F0E3C8] transition-all cursor-pointer"
+                  className="w-full py-2.5 bg-[#c7c6ca] text-[#303034] font-label-md font-bold rounded-full text-xs flex items-center justify-center gap-1.5 hover:bg-[#e3e2e6] transition-all cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[16px]">download</span>
                   <span>Install Desktop App</span>
                 </button>
               ) : (
-                <p className="text-[11px] text-[#9B9DA3] leading-relaxed">
+                <p className="text-[11px] text-[#c7c6cb] leading-relaxed">
                   In Chrome or Edge, click the install icon in the address bar to run standalone.
                 </p>
               )}
 
               {/* QR Code toggle */}
-              <div className="pt-2 border-t border-[#272A31] flex items-center justify-between">
-                <span className="text-[11px] text-[#9B9DA3]">Scan with phone camera:</span>
+              <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                <span className="text-[11px] text-[#909095]">Scan with phone camera:</span>
                 <button
                   onClick={() => setShowQr(!showQr)}
-                  className="px-2.5 py-1 rounded-full bg-[#121419] hover:bg-[#272A31] text-[10px] text-[#E8D8B8] font-mono flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 rounded-full bg-[#1e2025] hover:bg-[#282a2f] text-[10px] text-[#ffb3af] font-mono flex items-center gap-1 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[13px]">qr_code</span>
                   <span>{showQr ? 'Hide QR' : 'Show QR'}</span>
@@ -256,7 +256,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
                     alt="App URL QR Code"
                     className="w-32 h-32"
                   />
-                  <span className="text-[10px] text-[#121419] font-mono mt-1 font-semibold">
+                  <span className="text-[10px] text-[#111318] font-mono mt-1 font-semibold">
                     Scan with Phone Camera
                   </span>
                 </div>
@@ -265,7 +265,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
           )}
 
           {isInstalled && (
-            <div className="p-2.5 rounded-xl bg-[#7ED6A5]/15 border border-[#7ED6A5]/30 flex items-center gap-2 text-xs text-[#7ED6A5] font-mono">
+            <div className="p-2.5 rounded-xl bg-[#ffb3af]/15 border border-[#ffb3af]/30 flex items-center gap-2 text-xs text-[#ffb3af] font-mono">
               <span className="material-symbols-outlined text-[16px]">check_circle</span>
               <span>Running in standalone mobile mode.</span>
             </div>
@@ -273,8 +273,8 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-3.5 bg-[#181B21] border-t border-[#272A31] flex items-center justify-between">
-          <span className="text-[10px] text-[#6E7179] font-mono">
+        <div className="p-3.5 bg-[#111318] border-t border-white/5 flex items-center justify-between">
+          <span className="text-[10px] text-[#909095] font-mono">
             Zero Telemetry • Velora PWA
           </span>
           <button
@@ -282,7 +282,7 @@ export const InstallAppModal: React.FC<InstallAppModalProps> = ({
               triggerHaptic('light');
               onClose();
             }}
-            className="px-4 py-1.5 rounded-full bg-[#E8D8B8] text-[#121419] font-label-md text-xs font-bold hover:bg-[#F0E3C8] cursor-pointer transition-colors shadow-sm"
+            className="px-4 py-1.5 rounded-full bg-[#c7c6ca] text-[#303034] font-label-md text-xs font-bold hover:bg-[#e3e2e6] cursor-pointer transition-colors shadow-sm"
           >
             Done
           </button>

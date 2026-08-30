@@ -2,6 +2,8 @@
  * API and WebSocket client with graceful error handling for all hosting environments
  */
 
+import type { MessageItem, MemberRole, RoomInfo, SendMessagePayload } from '../types';
+
 export function getApiBaseUrl(): string {
   const envUrl = ((import.meta as any).env?.VITE_API_URL as string | undefined)?.trim();
   if (envUrl) {
@@ -73,3 +75,112 @@ export async function apiRequest<T = any>(
 
   return data as T;
 }
+
+/**
+ * Message & Room API Endpoints supporting the reply model
+ */
+
+export async function postMessageApi(
+  roomCode: string,
+  sessionToken: string,
+  payload: SendMessagePayload
+): Promise<{ success: boolean; message: MessageItem }> {
+  return apiRequest<{ success: boolean; message: MessageItem }>(
+    `/api/rooms/${encodeURIComponent(roomCode)}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+export async function getMessagesApi(
+  roomCode: string,
+  sessionToken: string
+): Promise<{
+  success: boolean;
+  role: MemberRole;
+  roomInfo: RoomInfo;
+  expiresAt: number;
+  serverTime: number;
+  messages: MessageItem[];
+}> {
+  return apiRequest(
+    `/api/rooms/${encodeURIComponent(roomCode)}/messages`,
+    {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+    }
+  );
+}
+
+export async function viewMessageApi(
+  roomCode: string,
+  messageId: string,
+  sessionToken: string
+): Promise<{ success: boolean; isBurned?: boolean; viewedAt?: number; expiresAt?: number }> {
+  return apiRequest(
+    `/api/rooms/${encodeURIComponent(roomCode)}/messages/${encodeURIComponent(messageId)}/view`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+    }
+  );
+}
+
+export async function burnMessageApi(
+  roomCode: string,
+  messageId: string,
+  sessionToken: string
+): Promise<{ success: boolean }> {
+  return apiRequest(
+    `/api/rooms/${encodeURIComponent(roomCode)}/messages/${encodeURIComponent(messageId)}/burn`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+    }
+  );
+}
+
+export async function clearMessagesApi(
+  roomCode: string,
+  sessionToken: string
+): Promise<{ success: boolean }> {
+  return apiRequest(
+    `/api/rooms/${encodeURIComponent(roomCode)}/messages`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+    }
+  );
+}
+
+export async function updateRoomTimerApi(
+  roomCode: string,
+  sessionToken: string,
+  defaultMessageExpiration: number
+): Promise<{ success: boolean; defaultMessageExpiration: number; roomInfo: RoomInfo }> {
+  return apiRequest(
+    `/api/rooms/${encodeURIComponent(roomCode)}/timer`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionToken}`,
+      },
+      body: JSON.stringify({ defaultMessageExpiration }),
+    }
+  );
+}
+

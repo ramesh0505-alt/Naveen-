@@ -25,6 +25,26 @@ export interface SessionData {
   roomStatus: RoomStatus;
 }
 
+export interface ReplyPreview {
+  messageId: string;
+  senderRole: MemberRole;
+  type: MessageType;
+  previewText?: string;
+  duration?: number;
+  isUnavailable?: boolean;
+}
+
+export interface SendMessagePayload {
+  type: MessageType;
+  textContent?: string;
+  mediaReference?: string;
+  duration?: number;
+  viewMode?: ViewMode;
+  burnAfterSeconds?: number;
+  burnOnRead?: boolean;
+  replyToMessageId?: string;
+}
+
 export interface MessageItem {
   id: string;
   roomCode: string;
@@ -42,6 +62,8 @@ export interface MessageItem {
   burnCountdownStartedAt?: number;
   createdAt: number;
   delivered: boolean;
+  replyToMessageId?: string;
+  replyPreview?: ReplyPreview;
 }
 
 export type CallState =
@@ -83,6 +105,7 @@ export type WebSocketClientMessage =
   | { type: 'auth'; roomCode: string; sessionToken: string }
   | { type: 'typing'; roomCode: string; isTyping: boolean }
   | { type: 'signal'; payload: CallSignalPayload }
+  | { type: 'visibility'; isVisible: boolean; activeScreen?: string }
   | { type: 'ping'; timestamp?: number };
 
 export type VeloraNotificationType =

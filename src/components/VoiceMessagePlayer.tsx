@@ -134,10 +134,10 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
 
   return (
     <div
-      className={`p-3 rounded-[18px] border transition-all duration-200 min-w-[240px] sm:min-w-[280px] max-w-sm shadow-sm select-none ${
+      className={`p-3.5 rounded-[18px] border transition-all duration-200 min-w-[240px] sm:min-w-[280px] max-w-sm shadow-md select-none ${
         isMe
-          ? 'bg-[#E8D8B8] text-[#121419] border-[#E8D8B8] rounded-br-[4px]'
-          : 'bg-[#181B21] text-[#F5F3EE] border-[#272A31] rounded-bl-[4px]'
+          ? 'msg-bubble-out bg-[#282a2f] text-[#e2e2e9] border-white/5'
+          : 'msg-bubble-in bg-[#1e2025] text-[#e2e2e9] border-white/5'
       }`}
     >
       {/* Waveform & Play Controls */}
@@ -146,11 +146,7 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
         <button
           onClick={togglePlay}
           id="voice-play-toggle-btn"
-          className={`w-9 h-9 min-w-[36px] min-h-[36px] rounded-full flex items-center justify-center transition-all active:scale-95 cursor-pointer flex-shrink-0 ${
-            isMe
-              ? 'bg-[#121419] text-[#E8D8B8] hover:bg-[#181B21]'
-              : 'bg-[#E8D8B8] text-[#121419] hover:bg-[#F0E3C8]'
-          }`}
+          className="w-9 h-9 min-w-[36px] min-h-[36px] rounded-full bg-[#ffb3af] text-[#230002] hover:bg-[#ffdad7] flex items-center justify-center transition-all active:scale-95 cursor-pointer flex-shrink-0 shadow-sm"
           aria-label={isPlaying ? 'Pause voice message' : 'Play voice message'}
         >
           {!isDownloaded ? (
@@ -179,22 +175,14 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
         <button
           type="button"
           onClick={cyclePlaybackRate}
-          className={`text-[10px] font-mono px-2 py-1 rounded-full border transition-all cursor-pointer flex items-center justify-center flex-shrink-0 ${
-            isMe
-              ? 'border-[#121419]/30 hover:border-[#121419] bg-[#121419]/10 text-[#121419]'
-              : 'border-[#272A31] hover:border-[#E8D8B8] bg-[#121419] text-[#9B9DA3] hover:text-[#F5F3EE]'
-          }`}
+          className="text-[10px] font-mono px-2 py-1 rounded-full border border-white/10 hover:border-[#ffb3af] bg-[#111318] text-[#c7c6cb] hover:text-[#e2e2e9] transition-all cursor-pointer flex items-center justify-center flex-shrink-0"
         >
           {playbackRate}x
         </button>
       </div>
 
       {/* Footer Info */}
-      <div
-        className={`flex items-center justify-between text-[10px] font-mono pt-1.5 mt-1 border-t ${
-          isMe ? 'border-[#121419]/15 text-[#121419]/70' : 'border-[#272A31] text-[#9B9DA3]'
-        }`}
-      >
+      <div className="flex items-center justify-between text-[10px] font-mono pt-1.5 mt-1 border-t border-white/5 text-[#909095]">
         <div className="flex items-center gap-1">
           <span>{formatDuration(Math.floor(currentTime))}</span>
           <span>/</span>
@@ -202,7 +190,7 @@ export const VoiceMessagePlayer: React.FC<VoiceMessagePlayerProps> = ({
         </div>
 
         {burnOnRead && (
-          <span className={`font-semibold flex items-center gap-0.5 ${isMe ? 'text-[#920418]' : 'text-[#FF5C5C]'}`}>
+          <span className="font-semibold flex items-center gap-0.5 text-[#ffb3af]">
             <span className="material-symbols-outlined text-[10px]">local_fire_department</span>
             <span>Burn on read</span>
           </span>

@@ -27,14 +27,12 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
   const animOffsetRef = useRef(0);
   const animFrameRef = useRef<number | null>(null);
 
-  // Default bars if waveform is empty: generate a natural conversational speech curve
   const bars = useMemo(() => {
     if (waveform && waveform.length >= 10) return waveform;
     const barCount = 42;
     const result: number[] = [];
     for (let i = 0; i < barCount; i++) {
       const norm = i / (barCount - 1);
-      // Organic speech pattern envelope
       const envelope = Math.sin(norm * Math.PI) * 0.4 + 0.3;
       const noise = ((Math.sin(i * 12.34) + 1) / 2) * 0.4 + 0.2;
       result.push(Math.max(0.15, Math.min(1.0, envelope * noise * 1.5)));
@@ -42,7 +40,6 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
     return result;
   }, [waveform]);
 
-  // Main draw loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -62,7 +59,6 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
 
       if (width <= 0 || h <= 0) return;
 
-      // Adjust internal canvas resolution for sharp retina display
       if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(h * dpr)) {
         canvas.width = Math.round(width * dpr);
         canvas.height = Math.round(h * dpr);
@@ -78,7 +74,6 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
       const barWidth = Math.max(2, (width - totalSpacing) / totalBars);
       const centerY = h / 2;
 
-      // Advance dynamic micro-oscillation if playing
       if (isPlaying) {
         animOffsetRef.current += 0.15;
       }
@@ -89,10 +84,8 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
         const isPast = barNormalizedPos <= progress;
         const isNearPlayhead = isPlaying && Math.abs(barNormalizedPos - progress) < 0.14;
 
-        // Base peak height
         let baseMagnitude = bars[i];
 
-        // Micro-bounce when near active playback needle
         if (isPlaying && isNearPlayhead) {
           const wavePhase = animOffsetRef.current + i * 0.45;
           const bounce = Math.sin(wavePhase) * 0.22;
@@ -111,19 +104,9 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
         }
 
         if (isPast) {
-          // Active played segment color
-          if (isMe) {
-            ctx.fillStyle = '#121419';
-          } else {
-            ctx.fillStyle = '#E8D8B8';
-          }
+          ctx.fillStyle = '#ffb3af';
         } else {
-          // Unplayed segment color
-          if (isMe) {
-            ctx.fillStyle = 'rgba(18, 20, 25, 0.25)';
-          } else {
-            ctx.fillStyle = 'rgba(245, 243, 238, 0.2)';
-          }
+          ctx.fillStyle = 'rgba(144, 144, 149, 0.35)';
         }
 
         ctx.fill();
@@ -132,29 +115,27 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
       // Draw active playhead needle / glow beacon
       if (progress > 0 && progress <= 1) {
         const playheadX = Math.min(width - 2, Math.max(2, progress * width));
-        
-        // Needle line
+
         ctx.beginPath();
         ctx.moveTo(playheadX, 1);
         ctx.lineTo(playheadX, h - 1);
-        ctx.strokeStyle = isMe ? '#121419' : '#E8D8B8';
+        ctx.strokeStyle = '#ffb3af';
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Glowing center dot
         ctx.beginPath();
         ctx.arc(playheadX, centerY, 3, 0, Math.PI * 2);
-        ctx.fillStyle = isMe ? '#121419' : '#E8D8B8';
+        ctx.fillStyle = '#ffb3af';
         ctx.fill();
       }
 
-      // Draw scrub hover line and preview indicator
+      // Draw scrub hover line
       if (isHovered && hoverPercent !== null) {
         const hoverX = hoverPercent * width;
         ctx.beginPath();
         ctx.moveTo(hoverX, 0);
         ctx.lineTo(hoverX, h);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.strokeStyle = 'rgba(255, 179, 175, 0.7)';
         ctx.lineWidth = 1;
         ctx.setLineDash([2, 2]);
         ctx.stroke();
@@ -178,7 +159,6 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
     };
   }, [bars, progress, isPlaying, isMe, hoverPercent, isHovered, height]);
 
-  // Click & scrub interactions
   const handlePointerAction = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     triggerHaptic('light');
@@ -196,9 +176,10 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
     setHoverPercent(percent);
   };
 
-  const hoverTime = hoverPercent !== null && totalDuration > 0
-    ? Math.round(hoverPercent * totalDuration)
-    : null;
+  const hoverTime =
+    hoverPercent !== null && totalDuration > 0
+      ? Math.round(hoverPercent * totalDuration)
+      : null;
 
   return (
     <div
@@ -220,10 +201,9 @@ export const VoiceWaveformCanvas: React.FC<VoiceWaveformCanvasProps> = ({
         style={{ height: `${height}px` }}
       />
 
-      {/* Scrub tooltip badge */}
       {isHovered && hoverPercent !== null && hoverTime !== null && (
         <div
-          className="absolute -top-6 px-1.5 py-0.5 rounded bg-black/90 text-white font-mono text-[9px] border border-white/20 pointer-events-none transform -translate-x-1/2 z-10 whitespace-nowrap shadow-md"
+          className="absolute -top-6 px-1.5 py-0.5 rounded bg-[#111318] text-[#ffb3af] font-mono text-[9px] border border-white/10 pointer-events-none transform -translate-x-1/2 z-10 whitespace-nowrap shadow-md"
           style={{ left: `${Math.min(92, Math.max(8, hoverPercent * 100))}%` }}
         >
           {formatDuration(hoverTime)}

@@ -23,38 +23,38 @@ export const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
   // Configuration for each state
   const config = {
     connected: {
-      barColor: 'bg-[#E8D8B8]',
-      glowColor: 'shadow-[0_1px_8px_rgba(232,216,184,0.3)]',
-      textColor: 'text-[#E8D8B8]',
-      bgColor: 'bg-[#121419]/90 border-[#272A31]',
-      dotColor: 'bg-[#7ED6A5]',
+      barColor: 'bg-[#ffb3af]',
+      glowColor: 'shadow-[0_1px_8px_rgba(255,179,175,0.3)]',
+      textColor: 'text-[#ffb3af]',
+      bgColor: 'bg-[#111318]/90 border-white/5',
+      dotColor: 'bg-[#ffb3af]',
       label: 'Signaling Live',
       description: 'End-to-end encrypted signaling channel',
     },
     connecting: {
-      barColor: 'bg-[#E8D8B8]',
-      glowColor: 'shadow-[0_1px_8px_rgba(232,216,184,0.3)]',
-      textColor: 'text-[#E8D8B8]',
-      bgColor: 'bg-[#121419]/90 border-[#272A31]',
-      dotColor: 'bg-[#E8D8B8] animate-ping',
+      barColor: 'bg-[#ffb3af]',
+      glowColor: 'shadow-[0_1px_8px_rgba(255,179,175,0.3)]',
+      textColor: 'text-[#ffb3af]',
+      bgColor: 'bg-[#111318]/90 border-white/5',
+      dotColor: 'bg-[#ffb3af] animate-ping',
       label: 'Connecting...',
       description: 'Establishing signaling session',
     },
     reconnecting: {
-      barColor: 'bg-[#FF5C5C]',
-      glowColor: 'shadow-[0_1px_10px_rgba(255,92,92,0.5)]',
-      textColor: 'text-[#FF5C5C]',
-      bgColor: 'bg-[#121419]/90 border-[#FF5C5C]/40',
-      dotColor: 'bg-[#FF5C5C] animate-pulse',
+      barColor: 'bg-[#ffb4ab]',
+      glowColor: 'shadow-[0_1px_10px_rgba(255,180,171,0.5)]',
+      textColor: 'text-[#ffb4ab]',
+      bgColor: 'bg-[#111318]/90 border-[#ffb4ab]/40',
+      dotColor: 'bg-[#ffb4ab] animate-pulse',
       label: 'Reconnecting',
       description: 'Connection lost, retrying automatically...',
     },
     disconnected: {
-      barColor: 'bg-[#FF5C5C]',
-      glowColor: 'shadow-[0_1px_10px_rgba(255,92,92,0.6)]',
-      textColor: 'text-[#FF5C5C]',
-      bgColor: 'bg-[#121419]/90 border-[#FF5C5C]/40',
-      dotColor: 'bg-[#FF5C5C]',
+      barColor: 'bg-[#ffb4ab]',
+      glowColor: 'shadow-[0_1px_10px_rgba(255,180,171,0.6)]',
+      textColor: 'text-[#ffb4ab]',
+      bgColor: 'bg-[#111318]/90 border-[#ffb4ab]/40',
+      dotColor: 'bg-[#ffb4ab]',
       label: 'Signaling Offline',
       description: 'Unable to reach signaling server',
     },
@@ -78,16 +78,16 @@ export const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
 
       {/* Prominent Banner when Disconnected or Reconnecting */}
       {isProblematic && (
-        <div className="w-full bg-[#121419]/95 border-b border-[#FF5C5C]/30 text-[#F5F3EE] px-4 py-2 shadow-lg flex items-center justify-between backdrop-blur-md animate-fade-in">
+        <div className="w-full bg-[#111318]/95 border-b border-[#ffb4ab]/30 text-[#e2e2e9] px-4 py-2 shadow-lg flex items-center justify-between backdrop-blur-md animate-fade-in">
           <div className="flex items-center gap-2.5 text-xs">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FF5C5C] opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#FF5C5C]"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ffb4ab] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ffb4ab]"></span>
             </span>
-            <span className="font-semibold text-[#FF5C5C] font-mono">
+            <span className="font-semibold text-[#ffb4ab] font-mono">
               {config.label}:
             </span>
-            <span className="text-[#9B9DA3] font-body-sm text-xs hidden sm:inline">
+            <span className="text-[#c7c6cb] font-body-md text-xs hidden sm:inline">
               {config.description}
             </span>
           </div>
@@ -96,7 +96,7 @@ export const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
             <button
               type="button"
               onClick={onReconnect}
-              className="px-3 py-1 rounded-full bg-[#FF5C5C] text-[#0B0C0F] font-label-md text-xs font-bold flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer"
+              className="px-3 py-1 rounded-full bg-[#ba1a1a] text-white font-label-md text-xs font-bold flex items-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer"
             >
               <span className="material-symbols-outlined text-[14px]">refresh</span>
               <span>Retry</span>

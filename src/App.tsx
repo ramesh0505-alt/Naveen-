@@ -29,7 +29,13 @@ import {
   hapticCallEnded,
   hapticBurnEffect,
 } from './utils/helpers';
-import { apiRequest, getWebSocketUrl } from './utils/api';
+import {
+  apiRequest,
+  getWebSocketUrl,
+  postMessageApi,
+  viewMessageApi,
+  updateRoomTimerApi,
+} from './utils/api';
 import {
   NetworkSettings,
   loadNetworkSettings,
@@ -126,34 +132,53 @@ export default function App() {
 
     const pathname = window.location.pathname;
     const matchPath = pathname.match(/\/(?:private|room|join)\/([a-zA-Z0-9_-]+)/);
-    if (matchPath && matchPath[1]) {
-      setRoomCode(matchPath[1].toUpperCase());
-      setCurrentScreen('JOIN');
-      return;
-    }
+    const pathRoom = matchPath && matchPath[1] ? matchPath[1].toUpperCase() : '';
+    const queryRoom = (searchParams.get('room') || searchParams.get('code') || searchParams.get('r') || pathRoom).toUpperCase();
 
-    const queryRoom = searchParams.get('room') || searchParams.get('code') || searchParams.get('r');
+    // Check for saved persistent room session
+    const savedSession = getActiveSession();
+
     if (queryRoom) {
-      setRoomCode(queryRoom.toUpperCase());
-      setCurrentScreen('JOIN');
-      return;
+      setRoomCode(queryRoom);
+      if (savedSession && savedSession.roomCode.toUpperCase() === queryRoom && savedSession.sessionToken) {
+        // User is returning to active room directly from notification or bookmark!
+        if (savedSession.pin) setPin(savedSession.pin);
+        setSessionToken(savedSession.sessionToken);
+        setRole(savedSession.role);
+        setExpiresAt(savedSession.expiresAt);
+        loadRoomSession(savedSession.roomCode, savedSession.sessionToken);
+        setCurrentScreen('CHAT');
+        return;
+      } else {
+        setCurrentScreen('JOIN');
+        return;
+      }
     }
 
     const hash = window.location.hash.replace(/^#\/?(room\/|join\/|private\/)?/, '');
     if (hash && hash.length >= 4 && hash.length <= 20) {
       const [hashCode, hashQuery] = hash.split('?');
-      setRoomCode(hashCode.toUpperCase());
+      const normHash = hashCode.toUpperCase();
+      setRoomCode(normHash);
       if (hashQuery) {
         const hashParams = new URLSearchParams(hashQuery);
         const hashPin = hashParams.get('pin') || hashParams.get('p');
         if (hashPin) setPin(hashPin);
+      }
+      if (savedSession && savedSession.roomCode.toUpperCase() === normHash && savedSession.sessionToken) {
+        if (savedSession.pin) setPin(savedSession.pin);
+        setSessionToken(savedSession.sessionToken);
+        setRole(savedSession.role);
+        setExpiresAt(savedSession.expiresAt);
+        loadRoomSession(savedSession.roomCode, savedSession.sessionToken);
+        setCurrentScreen('CHAT');
+        return;
       }
       setCurrentScreen('JOIN');
       return;
     }
 
     // 2. Restore active session across page reloads / app restarts
-    const savedSession = getActiveSession();
     if (savedSession && savedSession.roomCode && savedSession.sessionToken) {
       setRoomCode(savedSession.roomCode);
       if (savedSession.pin) setPin(savedSession.pin);
@@ -164,6 +189,34 @@ export default function App() {
       setCurrentScreen('CHAT');
     }
   }, []);
+
+  // Sync client visibility state with backend over WebSocket
+  useEffect(() => {
+    const reportVisibility = () => {
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        const isVisible = document.visibilityState === 'visible' && document.hasFocus();
+        socketRef.current.send(
+          JSON.stringify({
+            type: 'visibility',
+            isVisible,
+            activeScreen: currentScreen,
+          })
+        );
+      }
+    };
+
+    document.addEventListener('visibilitychange', reportVisibility);
+    window.addEventListener('focus', reportVisibility);
+    window.addEventListener('blur', reportVisibility);
+
+    reportVisibility();
+
+    return () => {
+      document.removeEventListener('visibilitychange', reportVisibility);
+      window.removeEventListener('focus', reportVisibility);
+      window.removeEventListener('blur', reportVisibility);
+    };
+  }, [currentScreen]);
 
   // Notification listeners & ServiceWorker initialization
   useEffect(() => {
@@ -189,8 +242,13 @@ export default function App() {
           const payload = event.data.payload;
           if (payload?.roomCode) {
             const targetCode = payload.roomCode.toUpperCase();
-            if (targetCode === roomCode && sessionToken) {
-              loadRoomSession(targetCode, sessionToken);
+            const savedSession = getActiveSession();
+            const tokenToUse = (targetCode === roomCode && sessionToken) ? sessionToken : (savedSession?.roomCode.toUpperCase() === targetCode ? savedSession.sessionToken : '');
+            
+            if (tokenToUse) {
+              setRoomCode(targetCode);
+              setSessionToken(tokenToUse);
+              loadRoomSession(targetCode, tokenToUse);
               setCurrentScreen('CHAT');
             } else {
               setRoomCode(targetCode);
@@ -802,17 +860,11 @@ export default function App() {
     viewMode?: ViewMode;
     burnAfterSeconds?: number;
     burnOnRead?: boolean;
+    replyToMessageId?: string;
   }) => {
     try {
       hapticMessageSent();
-      const data = await apiRequest(`/api/rooms/${roomCode}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${sessionToken}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      const data = await postMessageApi(roomCode, sessionToken, payload);
       if (data.success && data.message) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === data.message.id)) return prev;
@@ -821,19 +873,13 @@ export default function App() {
       }
     } catch (err: any) {
       console.error('Send message error:', err);
+      throw err;
     }
   };
 
   const handleUpdateRoomTimer = async (defaultMessageExpiration: number) => {
     try {
-      const data = await apiRequest(`/api/rooms/${roomCode}/timer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${sessionToken}`,
-        },
-        body: JSON.stringify({ defaultMessageExpiration }),
-      });
+      const data = await updateRoomTimerApi(roomCode, sessionToken, defaultMessageExpiration);
       if (data.success) {
         setRoomInfo((prev) =>
           prev
@@ -851,13 +897,7 @@ export default function App() {
 
   const handleViewMessage = async (messageId: string) => {
     try {
-      const data = await apiRequest(`/api/rooms/${roomCode}/messages/${messageId}/view`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${sessionToken}`,
-        },
-      });
+      const data = await viewMessageApi(roomCode, messageId, sessionToken);
       if (data.success) {
         setMessages((prev) =>
           prev.map((m) =>

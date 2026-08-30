@@ -237,20 +237,20 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
     >
       {/* Modal Card */}
       <div
-        className="bg-[#121419] border border-[#272A31] rounded-[28px] w-full max-w-sm overflow-hidden shadow-2xl flex flex-col relative text-[#F5F3EE]"
+        className="bg-[#1e2025] border border-white/5 rounded-[28px] w-full max-w-sm overflow-hidden shadow-2xl flex flex-col relative text-[#e2e2e9]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#272A31]/70 bg-[#181B21]">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-white/5 bg-[#111318]">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#E8D8B8]/10 text-[#E8D8B8] flex items-center justify-center border border-[#E8D8B8]/20">
+            <div className="w-8 h-8 rounded-full bg-[#ffb3af]/10 text-[#ffb3af] flex items-center justify-center border border-[#ffb3af]/20">
               <span className="material-symbols-outlined text-[18px]">qr_code_scanner</span>
             </div>
             <div>
-              <h2 className="font-editorial text-lg text-[#F5F3EE] leading-tight">
+              <h2 className="font-display-sm text-lg text-[#e2e2e9] leading-tight">
                 Scan Partner's Screen
               </h2>
-              <p className="text-[11px] text-[#9B9DA3]">Align QR code within the frame</p>
+              <p className="text-[11px] text-[#c7c6cb]">Align QR code within the frame</p>
             </div>
           </div>
 
@@ -260,7 +260,7 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
               onClose();
             }}
             id="qr-scanner-close-btn"
-            className="w-8 h-8 rounded-full bg-[#272A31]/60 hover:bg-[#272A31] text-[#9B9DA3] hover:text-[#F5F3EE] flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#1e2025] hover:bg-[#282a2f] text-[#c7c6cb] hover:text-[#e2e2e9] flex items-center justify-center transition-colors cursor-pointer"
             title="Close scanner"
           >
             <span className="material-symbols-outlined text-[18px]">close</span>
@@ -277,35 +277,35 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
 
           {/* Loading / Starting State */}
           {scannerState === 'starting' && (
-            <div className="absolute inset-0 z-20 bg-[#121419]/90 flex flex-col items-center justify-center p-6 text-center">
-              <div className="w-10 h-10 border-2 border-[#E8D8B8] border-t-transparent rounded-full animate-spin mb-3"></div>
-              <p className="font-mono text-xs text-[#E8D8B8]">Activating Camera...</p>
-              <p className="text-[11px] text-[#9B9DA3] mt-1">Please allow camera permissions if prompted</p>
+            <div className="absolute inset-0 z-20 bg-[#111318]/90 flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-10 h-10 border-2 border-[#ffb3af] border-t-transparent rounded-full animate-spin mb-3"></div>
+              <p className="font-mono text-xs text-[#ffb3af]">Activating Camera...</p>
+              <p className="text-[11px] text-[#c7c6cb] mt-1">Please allow camera permissions if prompted</p>
             </div>
           )}
 
           {/* Error State Overlay */}
           {scannerState === 'error' && (
-            <div className="absolute inset-0 z-20 bg-[#121419]/95 flex flex-col items-center justify-center p-6 text-center">
-              <div className="w-12 h-12 rounded-full bg-[#FF5C5C]/15 text-[#FF5C5C] flex items-center justify-center border border-[#FF5C5C]/30 mb-3">
+            <div className="absolute inset-0 z-20 bg-[#111318]/95 flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-[#93000a]/20 text-[#ffb4ab] flex items-center justify-center border border-[#ffb4ab]/30 mb-3">
                 <span className="material-symbols-outlined text-[24px]">videocam_off</span>
               </div>
-              <p className="font-headline-md text-sm text-[#F5F3EE] mb-1 font-bold">Camera Unavailable</p>
-              <p className="text-xs text-[#9B9DA3] mb-4 max-w-xs leading-relaxed">
+              <p className="font-headline-md text-sm text-[#e2e2e9] mb-1 font-bold">Camera Unavailable</p>
+              <p className="text-xs text-[#c7c6cb] mb-4 max-w-xs leading-relaxed">
                 {errorMessage || 'Could not access the camera. Check device permissions or upload a QR image.'}
               </p>
 
               <div className="flex gap-2 w-full max-w-xs">
                 <button
                   onClick={() => startScanner()}
-                  className="flex-1 py-2 px-3 rounded-xl bg-[#272A31] hover:bg-[#32363F] text-xs font-semibold text-[#F5F3EE] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[#1e2025] hover:bg-[#282a2f] text-xs font-semibold text-[#e2e2e9] flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">refresh</span>
                   <span>Retry</span>
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 py-2 px-3 rounded-xl bg-[#E8D8B8] text-[#121419] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#F0E3C8] transition-colors"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[#c7c6ca] text-[#303034] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#e3e2e6] transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">upload_file</span>
                   <span>Upload Image</span>
@@ -316,38 +316,35 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
 
           {/* Success State Overlay */}
           {scannerState === 'success' && scannedResult && (
-            <div className="absolute inset-0 z-30 bg-[#121419]/95 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-              <div className="w-14 h-14 rounded-full bg-[#7ED6A5]/20 text-[#7ED6A5] flex items-center justify-center border border-[#7ED6A5]/40 mb-3 animate-scale-up">
+            <div className="absolute inset-0 z-30 bg-[#111318]/95 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+              <div className="w-14 h-14 rounded-full bg-[#ffb3af]/20 text-[#ffb3af] flex items-center justify-center border border-[#ffb3af]/40 mb-3 animate-scale-up">
                 <span className="material-symbols-outlined text-[30px]">check_circle</span>
               </div>
-              <p className="font-editorial text-xl text-[#F5F3EE] mb-1">Room Found!</p>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#181B21] border border-[#272A31] text-xs font-mono mb-2">
-                <span className="text-[#9B9DA3]">ROOM:</span>
-                <span className="text-[#E8D8B8] font-bold">{scannedResult.roomCode}</span>
+              <p className="font-display-sm text-xl text-[#e2e2e9] mb-1">Room Found!</p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#1e2025] border border-white/5 text-xs font-mono mb-2">
+                <span className="text-[#909095]">ROOM:</span>
+                <span className="text-[#ffb3af] font-bold">{scannedResult.roomCode}</span>
                 {scannedResult.pin && (
                   <>
-                    <span className="text-[#9B9DA3]">PIN:</span>
-                    <span className="text-[#7ED6A5] font-bold tracking-wider">{scannedResult.pin}</span>
+                    <span className="text-[#909095]">PIN:</span>
+                    <span className="text-[#ffb3af] font-bold tracking-wider">{scannedResult.pin}</span>
                   </>
                 )}
               </div>
-              <p className="text-[11px] text-[#7ED6A5] font-mono animate-pulse">Entering space...</p>
+              <p className="text-[11px] text-[#ffb3af] font-mono animate-pulse">Entering space...</p>
             </div>
           )}
 
           {/* Overlay Targeting Frame & Laser */}
           {scannerState === 'scanning' && (
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              {/* Darkened corner borders */}
-              <div className="relative w-60 h-60 border-2 border-dashed border-[#E8D8B8]/40 rounded-2xl flex items-center justify-center overflow-hidden">
-                {/* 4 Optical Corner Brackets */}
-                <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-[#E8D8B8] rounded-tl-lg"></div>
-                <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-[#E8D8B8] rounded-tr-lg"></div>
-                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-[#E8D8B8] rounded-bl-lg"></div>
-                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-[#E8D8B8] rounded-br-lg"></div>
+              <div className="relative w-60 h-60 border-2 border-dashed border-[#ffb3af]/40 rounded-2xl flex items-center justify-center overflow-hidden">
+                <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-[#ffb3af] rounded-tl-lg"></div>
+                <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-[#ffb3af] rounded-tr-lg"></div>
+                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-[#ffb3af] rounded-bl-lg"></div>
+                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-[#ffb3af] rounded-br-lg"></div>
 
-                {/* Animated Red/Gold Laser Sweep */}
-                <div className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-[#E8D8B8] to-transparent shadow-[0_0_8px_#E8D8B8] animate-laser"></div>
+                <div className="absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-[#ffb3af] to-transparent shadow-[0_0_8px_#ffb3af] animate-laser"></div>
               </div>
             </div>
           )}
@@ -361,8 +358,8 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
                   onClick={handleToggleTorch}
                   className={`w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md border transition-all cursor-pointer ${
                     torchOn
-                      ? 'bg-[#E8D8B8] text-[#121419] border-[#E8D8B8] shadow-[0_0_12px_rgba(232,216,184,0.5)]'
-                      : 'bg-black/60 text-[#F5F3EE] border-white/20 hover:bg-black/80'
+                      ? 'bg-[#ffb3af] text-[#561e1d] border-[#ffb3af] shadow-[0_0_12px_rgba(255,179,175,0.5)]'
+                      : 'bg-black/60 text-[#e2e2e9] border-white/20 hover:bg-black/80'
                   }`}
                   title="Toggle Torch/Flash"
                 >
@@ -376,7 +373,7 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
                 <button
                   type="button"
                   onClick={handleSwitchCamera}
-                  className="w-9 h-9 rounded-full bg-black/60 text-[#F5F3EE] border border-white/20 hover:bg-black/80 flex items-center justify-center backdrop-blur-md transition-all cursor-pointer"
+                  className="w-9 h-9 rounded-full bg-black/60 text-[#e2e2e9] border border-white/20 hover:bg-black/80 flex items-center justify-center backdrop-blur-md transition-all cursor-pointer"
                   title="Switch Camera"
                 >
                   <span className="material-symbols-outlined text-[18px]">flip_camera_ios</span>
@@ -387,13 +384,13 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 bg-[#181B21] border-t border-[#272A31] flex items-center justify-between gap-3">
+        <div className="p-4 bg-[#111318] border-t border-white/5 flex items-center justify-between gap-3">
           {/* File Upload Trigger */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             id="qr-scan-from-file-btn"
-            className="flex-1 py-2.5 px-3 rounded-xl bg-[#272A31] hover:bg-[#32363F] text-xs font-semibold text-[#E8D8B8] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="flex-1 py-2.5 px-3 rounded-xl bg-[#1e2025] hover:bg-[#282a2f] text-xs font-semibold text-[#ffb3af] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">image</span>
             <span>Scan from Gallery</span>
@@ -406,12 +403,11 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
               onClose();
             }}
             id="qr-scan-cancel-btn"
-            className="py-2.5 px-4 rounded-xl bg-transparent hover:bg-[#272A31]/50 text-xs font-medium text-[#9B9DA3] hover:text-[#F5F3EE] transition-colors cursor-pointer"
+            className="py-2.5 px-4 rounded-xl bg-transparent hover:bg-[#1e2025]/50 text-xs font-medium text-[#c7c6cb] hover:text-[#e2e2e9] transition-colors cursor-pointer"
           >
             Cancel
           </button>
 
-          {/* Hidden File Input for scanning photos */}
           <input
             ref={fileInputRef}
             type="file"
