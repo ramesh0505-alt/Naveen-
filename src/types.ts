@@ -85,6 +85,56 @@ export type WebSocketClientMessage =
   | { type: 'signal'; payload: CallSignalPayload }
   | { type: 'ping'; timestamp?: number };
 
+export type VeloraNotificationType =
+  | 'MESSAGE'
+  | 'VOICE'
+  | 'CALL'
+  | 'MISSED_CALL'
+  | 'ROOM_INVITATION'
+  | 'ROOM_JOINED'
+  | 'PARTICIPANT_LEFT'
+  | 'ROOM_EXPIRING'
+  | 'ROOM_EXPIRED'
+  | 'CONNECTION';
+
+export interface VeloraNotification {
+  id: string;
+  type: VeloraNotificationType;
+  title: string;
+  body: string;
+  roomCode: string;
+  senderRole?: MemberRole;
+  senderName?: string;
+  messageId?: string;
+  callId?: string;
+  timestamp: number;
+  expiresAt?: number;
+  read: boolean;
+  actionUrl?: string;
+  tag?: string;
+  duration?: number; // For voice notes
+}
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  messagePreviews: boolean;
+  voiceMessages: boolean;
+  audioCalls: boolean;
+  roomActivity: boolean;
+  sound: boolean;
+  vibration: boolean;
+  permissionPromptDismissed?: boolean;
+}
+
+export interface PushSubscriptionData {
+  endpoint: string;
+  expirationTime?: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
 export type WebSocketServerMessage =
   | { type: 'auth:success'; role: MemberRole; roomInfo: RoomInfo }
   | { type: 'auth:error'; message: string }
@@ -99,7 +149,9 @@ export type WebSocketServerMessage =
   | { type: 'message:viewed'; messageId: string; viewedAt: number; burnAfterSeconds?: number; expiresAt?: number }
   | { type: 'room:timer_updated'; defaultMessageExpiration: number; updatedBy: MemberRole }
   | { type: 'signal'; payload: CallSignalPayload }
+  | { type: 'room:expiring'; hoursRemaining?: number; minutesRemaining?: number; expiresAt: number }
   | { type: 'room:expired' }
   | { type: 'room:closed'; reason?: string }
+  | { type: 'notification:event'; notification: VeloraNotification }
   | { type: 'error'; message: string }
   | { type: 'pong'; timestamp?: number };

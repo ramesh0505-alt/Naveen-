@@ -14,6 +14,8 @@ import { AudioCallModal } from './components/AudioCallModal';
 import { RoomExpiredView } from './components/RoomExpiredView';
 import { SettingsModal } from './components/SettingsModal';
 import { ProfileView } from './components/ProfileView';
+import { NotificationToast } from './components/NotificationToast';
+import { NotificationCenterModal } from './components/NotificationCenterModal';
 import { WebRTCCallManager } from './utils/webrtc';
 import { SoundEffects, unlockAudioContext } from './utils/audio';
 import {
@@ -41,6 +43,14 @@ import {
   saveActiveSession,
   clearActiveSession,
 } from './utils/session';
+import {
+  dispatchNotification,
+  getNotificationPermissionState,
+  subscribeUserToPush,
+  getUnreadNotificationCount,
+  updateAppBadge,
+  onNotificationRoute,
+} from './utils/notifications';
 import type {
   RoomInfo,
   MemberRole,
@@ -60,6 +70,8 @@ export default function App() {
   const [isInstallModalOpen, setIsInstallModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0);
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState<any>(null);
   const [isFrameMode, setIsFrameMode] = useState<boolean>(false);
 
@@ -152,6 +164,71 @@ export default function App() {
       setCurrentScreen('CHAT');
     }
   }, []);
+
+  // Notification listeners & ServiceWorker initialization
+  useEffect(() => {
+    // 1. Initial badge update from unread history (excluding expired messages)
+    const count = getUnreadNotificationCount();
+    setUnreadNotificationCount(count);
+    updateAppBadge(count);
+
+    // 2. Register Service Worker for background notifications
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => {
+          console.log('VELORA ServiceWorker registered with scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('VELORA ServiceWorker registration notice:', err);
+        });
+
+      // Handle notification click routing messages posted by service worker
+      const handleSwMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'VELORA_NOTIFICATION_CLICK') {
+          const payload = event.data.payload;
+          if (payload?.roomCode) {
+            const targetCode = payload.roomCode.toUpperCase();
+            if (targetCode === roomCode && sessionToken) {
+              loadRoomSession(targetCode, sessionToken);
+              setCurrentScreen('CHAT');
+            } else {
+              setRoomCode(targetCode);
+              setCurrentScreen('JOIN');
+            }
+          }
+          const nextCount = getUnreadNotificationCount();
+          setUnreadNotificationCount(nextCount);
+          updateAppBadge(nextCount);
+        }
+      };
+
+      navigator.serviceWorker.addEventListener('message', handleSwMessage);
+      return () => {
+        navigator.serviceWorker.removeEventListener('message', handleSwMessage);
+      };
+    }
+  }, [roomCode, sessionToken]);
+
+  // Listen for custom in-app notification routing clicks (from toasts or notification history center)
+  useEffect(() => {
+    const unsubscribe = onNotificationRoute((payload) => {
+      if (payload.roomCode) {
+        const targetCode = payload.roomCode.toUpperCase();
+        if (targetCode === roomCode && sessionToken) {
+          loadRoomSession(targetCode, sessionToken);
+          setCurrentScreen('CHAT');
+        } else {
+          setRoomCode(targetCode);
+          setCurrentScreen('JOIN');
+        }
+      }
+      const nextCount = getUnreadNotificationCount();
+      setUnreadNotificationCount(nextCount);
+      updateAppBadge(nextCount);
+    });
+    return unsubscribe;
+  }, [roomCode, sessionToken]);
 
   // PWA Install Prompt Listener
   useEffect(() => {
@@ -404,6 +481,10 @@ export default function App() {
             setRole(data.role);
             setRoomInfo(data.roomInfo);
             setSignalingStatus('connected');
+            // Ensure Web Push subscription is registered if notification permission is already granted
+            if (getNotificationPermissionState() === 'granted' && sessionToken && roomCode) {
+              subscribeUserToPush(sessionToken, roomCode);
+            }
           } else if (data.type === 'presence') {
             setOtherUserOnline(data.otherUserOnline);
             setOtherUserRole(data.otherUserRole);
@@ -476,6 +557,13 @@ export default function App() {
             setSessionToken('');
             setExpiredReason(data.reason || 'This private room was closed.');
             setCurrentScreen('EXPIRED');
+          } else if (data.type === 'notification:event') {
+            if (data.notification) {
+              dispatchNotification(data.notification);
+              const count = getUnreadNotificationCount();
+              setUnreadNotificationCount(count);
+              updateAppBadge(count);
+            }
           }
         } catch (e) {
           console.error('Error handling ws message:', e);
@@ -1080,6 +1168,8 @@ export default function App() {
             onNavigateHome={handleGoHome}
             onOpenProfile={() => setIsProfileModalOpen(true)}
             onOpenSettings={() => setIsSettingsModalOpen(true)}
+            unreadNotificationsCount={unreadNotificationCount}
+            onOpenNotifications={() => setIsNotificationModalOpen(true)}
             isLowDataActive={isLowData}
           />
         )}
@@ -1147,6 +1237,7 @@ export default function App() {
             <ChatView
               roomCode={roomCode}
               pin={pin}
+              sessionToken={sessionToken}
               role={role}
               roomInfo={roomInfo}
               messages={messages}
@@ -1155,9 +1246,11 @@ export default function App() {
               networkSettings={networkSettings}
               signalingStatus={signalingStatus}
               pingLatency={pingLatency}
+              unreadNotificationsCount={unreadNotificationCount}
               onNavigateHome={handleGoHome}
               onOpenProfile={() => setIsProfileModalOpen(true)}
               onOpenSettings={() => setIsSettingsModalOpen(true)}
+              onOpenNotifications={() => setIsNotificationModalOpen(true)}
               onSendMessage={handleSendMessage}
               onSendTyping={handleSendTyping}
               onStartCall={handleStartCall}
@@ -1223,7 +1316,23 @@ export default function App() {
           onClose={() => setIsSettingsModalOpen(false)}
           settings={networkSettings}
           onUpdateSettings={handleUpdateNetworkSettings}
+          roomCode={roomCode}
+          sessionToken={sessionToken}
         />
+
+        {/* Notification History Center Modal */}
+        <NotificationCenterModal
+          isOpen={isNotificationModalOpen}
+          onClose={() => {
+            setIsNotificationModalOpen(false);
+            const count = getUnreadNotificationCount();
+            setUnreadNotificationCount(count);
+            updateAppBadge(count);
+          }}
+        />
+
+        {/* In-App Floating Notification Toast */}
+        <NotificationToast />
 
         {/* Install PWA Mobile App Modal */}
         <InstallAppModal

@@ -6,6 +6,7 @@ import { DisappearingPhotoModal } from './DisappearingPhotoModal';
 import { VoiceRecorder } from './VoiceRecorder';
 import { LeaveRoomModal } from './LeaveRoomModal';
 import { RoomInfoModal } from './RoomInfoModal';
+import { NotificationPermissionBanner } from './NotificationPermissionBanner';
 import { VoiceRecorder as AudioRecorderClass, SoundEffects } from '../utils/audio';
 import {
   formatTimeRemaining,
@@ -20,6 +21,7 @@ import { NetworkSettings, isLowDataActive, DEFAULT_NETWORK_SETTINGS } from '../u
 interface ChatViewProps {
   roomCode: string;
   pin?: string;
+  sessionToken?: string;
   role: MemberRole;
   roomInfo: RoomInfo;
   messages: MessageItem[];
@@ -28,9 +30,11 @@ interface ChatViewProps {
   networkSettings?: NetworkSettings;
   signalingStatus?: SignalingStatus;
   pingLatency?: number | null;
+  unreadNotificationsCount?: number;
   onNavigateHome?: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
+  onOpenNotifications?: () => void;
   onSendMessage: (payload: {
     type: 'TEXT' | 'VOICE' | 'IMAGE';
     textContent?: string;
@@ -53,6 +57,7 @@ interface ChatViewProps {
 export const ChatView: React.FC<ChatViewProps> = ({
   roomCode,
   pin,
+  sessionToken,
   role,
   roomInfo,
   messages,
@@ -61,9 +66,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
   networkSettings = DEFAULT_NETWORK_SETTINGS,
   signalingStatus = 'connected',
   pingLatency,
+  unreadNotificationsCount = 0,
   onNavigateHome,
   onOpenProfile,
   onOpenSettings,
+  onOpenNotifications,
   onSendMessage,
   onSendTyping,
   onStartCall,
@@ -615,6 +622,27 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <span className="material-symbols-outlined text-[17px] sm:text-[19px]">call</span>
           </button>
 
+          {/* Notification Center Button */}
+          {onOpenNotifications && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic('light');
+                onOpenNotifications();
+              }}
+              id="chat-header-notifications-btn"
+              className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-[#181B21] border border-[#272A31] hover:border-[#E8D8B8]/40 text-[#9B9DA3] hover:text-[#F5F3EE] active:scale-95 transition-all cursor-pointer"
+              title="Notification Center"
+            >
+              <span className="material-symbols-outlined text-[17px] sm:text-[19px]">notifications</span>
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#FF5C5C] text-[#F5F3EE] font-mono text-[9px] font-bold flex items-center justify-center border border-[#0B0C0F]">
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* More Menu Toggle */}
           <div className="relative">
             <button
@@ -644,6 +672,27 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <span className="material-symbols-outlined text-[#FF5C5C] text-[17px]">local_fire_department</span>
                   <span>Disappearing Timer</span>
                 </button>
+
+                {onOpenNotifications && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMenu(false);
+                      onOpenNotifications();
+                    }}
+                    className="w-full px-3.5 py-2.5 text-xs text-left text-[#F5F3EE] hover:bg-[#181B21] flex items-center gap-2.5 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[#E8D8B8] text-[17px]">notifications</span>
+                    <div className="flex items-center justify-between flex-1">
+                      <span>Notifications</span>
+                      {unreadNotificationsCount > 0 && (
+                        <span className="text-[9px] bg-[#FF5C5C] text-[#F5F3EE] px-1.5 py-0.2 rounded-full font-mono font-bold">
+                          {unreadNotificationsCount}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                )}
 
                 {onOpenSettings && (
                   <button
@@ -759,6 +808,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <span>{formatTimeRemaining(roomInfo.expiresAt, now)} Left in Room</span>
           </button>
         </div>
+
+        {/* Private Notification Permission Prompt Banner */}
+        <NotificationPermissionBanner roomCode={roomCode} sessionToken={sessionToken} />
 
         <MessageList
           messages={messages}

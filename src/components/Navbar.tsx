@@ -9,9 +9,11 @@ interface NavbarProps {
   signalingStatus?: SignalingStatus;
   pingLatency?: number | null;
   isLowDataActive?: boolean;
+  unreadNotificationsCount?: number;
   onNavigateHome: () => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
+  onOpenNotifications?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -21,9 +23,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   signalingStatus = 'connected',
   pingLatency,
   isLowDataActive = false,
+  unreadNotificationsCount = 0,
   onNavigateHome,
   onOpenProfile,
   onOpenSettings,
+  onOpenNotifications,
 }) => {
   // Dot & color styling based on signaling status
   const statusConfig = {
@@ -139,6 +143,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {memberCount ?? 1}/2
               </span>
             </div>
+          )}
+
+          {/* Notification Center button */}
+          {onOpenNotifications && (
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                onOpenNotifications();
+              }}
+              id="navbar-notifications-btn"
+              className="relative w-8 h-8 rounded-full bg-[#181B21] border border-[#272A31] text-[#9B9DA3] hover:text-[#F5F3EE] hover:border-[#E8D8B8]/60 flex items-center justify-center transition-transform active:scale-95 cursor-pointer"
+              title="Notification Center"
+            >
+              <span className="material-symbols-outlined text-[17px]">notifications</span>
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#FF5C5C] text-[#F5F3EE] font-mono text-[9px] font-bold flex items-center justify-center border border-[#0B0C0F]">
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </span>
+              )}
+            </button>
           )}
 
           {/* Profile / Account button */}

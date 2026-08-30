@@ -4,6 +4,7 @@ import path from "path";
 import crypto from "crypto";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer as createViteServer } from "vite";
+import webpush from "web-push";
 import type {
   RoomStatus,
   MemberRole,
@@ -12,7 +13,16 @@ import type {
   CallSignalPayload,
   WebSocketClientMessage,
   WebSocketServerMessage,
+  VeloraNotification,
 } from "./src/types";
+
+// Initialize VAPID Keys for Web Push
+const vapidKeys = webpush.generateVAPIDKeys();
+webpush.setVapidDetails(
+  "mailto:notifications@velora.chat",
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
 
 interface StoredRoom {
   id: string;
@@ -27,6 +37,8 @@ interface StoredRoom {
   expiresAt: number;
   closedAt?: number;
   defaultMessageExpiration: number; // 0 = room lifetime, -1 = burn-on-read, >0 = seconds
+  reminder1hSent?: boolean;
+  reminder10mSent?: boolean;
 }
 
 interface StoredSession {
@@ -53,6 +65,40 @@ const sessions = new Map<string, StoredSession>(); // keyed by sessionId
 const messages = new Map<string, MessageItem[]>(); // keyed by roomCode
 const pinAttempts = new Map<string, { count: number; lockedUntil: number }>(); // keyed by ip_roomCode
 const activeSockets = new Map<WebSocket, SocketClient>();
+const pushSubscriptions = new Map<string, { roomCode: string; subscription: webpush.PushSubscription; role: MemberRole }>();
+
+// Notification Dispatcher
+async function sendVeloraNotification(
+  roomCode: string,
+  senderRole: MemberRole | null,
+  notification: VeloraNotification,
+  excludeSessionId?: string
+) {
+  // 1. Broadcast over WebSocket
+  broadcastToRoom(roomCode, {
+    type: "notification:event",
+    notification,
+  });
+
+  // 2. Send Web Push to subscribed peers
+  for (const [sessionId, subData] of pushSubscriptions.entries()) {
+    if (
+      subData.roomCode.toUpperCase() === roomCode.toUpperCase() &&
+      sessionId !== excludeSessionId
+    ) {
+      try {
+        await webpush.sendNotification(
+          subData.subscription,
+          JSON.stringify(notification)
+        );
+      } catch (err: any) {
+        if (err.statusCode === 410 || err.statusCode === 404) {
+          pushSubscriptions.delete(sessionId);
+        }
+      }
+    }
+  }
+}
 
 // Cryptographic helpers
 function normalizeRoomCode(code: string): string {
@@ -100,11 +146,63 @@ function generateSessionToken(): string {
 function cleanupExpiredData() {
   const now = Date.now();
   for (const [code, room] of rooms.entries()) {
+    // Check 1h & 10m expiration reminders
+    if (room.status === "ACTIVE" || room.status === "WAITING") {
+      const remainingMs = room.expiresAt - now;
+      if (remainingMs > 0 && remainingMs <= 60 * 60 * 1000 && !room.reminder1hSent) {
+        room.reminder1hSent = true;
+        const minutes = Math.round(remainingMs / 60000);
+        sendVeloraNotification(code, null, {
+          id: `exp-1h-${code}`,
+          type: "ROOM_EXPIRING",
+          title: "VELORA",
+          body: `Private Space expires in ${minutes} minutes.`,
+          roomCode: code,
+          timestamp: now,
+          expiresAt: room.expiresAt,
+          read: false,
+        });
+        broadcastToRoom(code, {
+          type: "room:expiring",
+          minutesRemaining: minutes,
+          expiresAt: room.expiresAt,
+        });
+      } else if (remainingMs > 0 && remainingMs <= 10 * 60 * 1000 && !room.reminder10mSent) {
+        room.reminder10mSent = true;
+        const minutes = Math.round(remainingMs / 60000);
+        sendVeloraNotification(code, null, {
+          id: `exp-10m-${code}`,
+          type: "ROOM_EXPIRING",
+          title: "VELORA",
+          body: `Private Space expires in ${minutes} minutes.`,
+          roomCode: code,
+          timestamp: now,
+          expiresAt: room.expiresAt,
+          read: false,
+        });
+        broadcastToRoom(code, {
+          type: "room:expiring",
+          minutesRemaining: minutes,
+          expiresAt: room.expiresAt,
+        });
+      }
+    }
+
     if (room.expiresAt <= now && room.status !== "EXPIRED" && room.status !== "CLOSED") {
       room.status = "EXPIRED";
       room.closedAt = now;
 
-      // Broadcast to sockets
+      // Broadcast and push expiry
+      sendVeloraNotification(code, null, {
+        id: `expired-${code}`,
+        type: "ROOM_EXPIRED",
+        title: "VELORA",
+        body: "Private Space expired · This room is no longer available.",
+        roomCode: code,
+        timestamp: now,
+        read: false,
+      });
+
       broadcastToRoom(code, { type: "room:expired" });
 
       // Clean up messages and media
@@ -288,7 +386,54 @@ async function startServer() {
     next();
   };
 
-  // 1. Create Room
+  // 1. Notification Subscriptions & VAPID Public Key
+  app.get("/api/notifications/vapid-public-key", (req, res) => {
+    return res.json({ publicKey: vapidKeys.publicKey });
+  });
+
+  app.post("/api/notifications/subscribe", requireSession, (req, res) => {
+    const session = (req as any).session as StoredSession;
+    const room = (req as any).room as StoredRoom;
+    const { subscription } = req.body;
+
+    if (!subscription || !subscription.endpoint) {
+      return res.status(400).json({ error: "Invalid push subscription object" });
+    }
+
+    pushSubscriptions.set(session.sessionId, {
+      roomCode: room.roomCode,
+      subscription,
+      role: session.role,
+    });
+
+    return res.json({ success: true });
+  });
+
+  app.post("/api/notifications/unsubscribe", requireSession, (req, res) => {
+    const session = (req as any).session as StoredSession;
+    pushSubscriptions.delete(session.sessionId);
+    return res.json({ success: true });
+  });
+
+  app.post("/api/notifications/test", requireSession, (req, res) => {
+    const session = (req as any).session as StoredSession;
+    const room = (req as any).room as StoredRoom;
+
+    sendVeloraNotification(room.roomCode, session.role, {
+      id: "test-" + Date.now(),
+      type: "MESSAGE",
+      title: "VELORA",
+      body: "New message from your private space",
+      roomCode: room.roomCode,
+      senderRole: session.role,
+      timestamp: Date.now(),
+      read: false,
+    });
+
+    return res.json({ success: true });
+  });
+
+  // 2. Create Room
   app.post("/api/rooms", (req, res) => {
     try {
       const durationHours = req.body.durationHours !== undefined ? Number(req.body.durationHours) : undefined;
@@ -460,6 +605,23 @@ async function startServer() {
     // Notify room of active state
     updatePresence(room.roomCode);
 
+    // Send notification to room owner that guest has joined
+    sendVeloraNotification(
+      room.roomCode,
+      "guest",
+      {
+        id: "joined-" + Date.now(),
+        type: "ROOM_JOINED",
+        title: "VELORA",
+        body: "Private Space · Your private room is now connected.",
+        roomCode: room.roomCode,
+        senderRole: "guest",
+        timestamp: now,
+        read: false,
+      },
+      guestSessionId
+    );
+
     return res.json({
       success: true,
       roomCode: room.roomCode,
@@ -613,6 +775,27 @@ async function startServer() {
       message: newMessage,
     });
 
+    // Send push / background notification to peer
+    const notifType = normalizedType === "VOICE" ? "VOICE" : "MESSAGE";
+    sendVeloraNotification(
+      room.roomCode,
+      session.role,
+      {
+        id: "msg-" + newMessage.id,
+        type: notifType,
+        title: "VELORA",
+        body: notifType === "VOICE" ? "New voice message" : "New message from your private space",
+        roomCode: room.roomCode,
+        senderRole: session.role,
+        messageId: newMessage.id,
+        timestamp: now,
+        expiresAt: newMessage.expiresAt,
+        duration: newMessage.duration,
+        read: false,
+      },
+      session.sessionId
+    );
+
     return res.status(201).json({ success: true, message: newMessage });
   });
 
@@ -759,6 +942,22 @@ async function startServer() {
     });
     updatePresence(room.roomCode);
 
+    sendVeloraNotification(
+      room.roomCode,
+      session.role,
+      {
+        id: "left-" + Date.now(),
+        type: "PARTICIPANT_LEFT",
+        title: "VELORA",
+        body: "Private Space · The other participant has left the room.",
+        roomCode: room.roomCode,
+        senderRole: session.role,
+        timestamp: Date.now(),
+        read: false,
+      },
+      session.sessionId
+    );
+
     return res.json({ success: true, message: "Participant left private space." });
   });
 
@@ -902,6 +1101,42 @@ async function startServer() {
             },
             ws
           );
+
+          if (payload.type === "call:initiate" || payload.type === "call:offer") {
+            sendVeloraNotification(
+              clientInfo.roomCode,
+              clientInfo.role,
+              {
+                id: "call-" + Date.now(),
+                type: "CALL",
+                title: "VELORA",
+                body: "Incoming audio call · Tap to answer",
+                roomCode: clientInfo.roomCode,
+                senderRole: clientInfo.role,
+                timestamp: Date.now(),
+                read: false,
+              },
+              clientInfo.sessionId
+            );
+          } else if (payload.type === "call:end" || payload.type === "call:busy" || payload.type === "call:reject") {
+            if ((payload as any).wasMissed) {
+              sendVeloraNotification(
+                clientInfo.roomCode,
+                clientInfo.role,
+                {
+                  id: "missed-" + Date.now(),
+                  type: "MISSED_CALL",
+                  title: "VELORA",
+                  body: "Missed audio call · Private Space",
+                  roomCode: clientInfo.roomCode,
+                  senderRole: clientInfo.role,
+                  timestamp: Date.now(),
+                  read: false,
+                },
+                clientInfo.sessionId
+              );
+            }
+          }
           return;
         }
       } catch (e) {
