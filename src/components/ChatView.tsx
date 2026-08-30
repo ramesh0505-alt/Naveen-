@@ -4,6 +4,8 @@ import { MessageList } from './MessageList';
 import { ClearConversationModal } from './ClearConversationModal';
 import { DisappearingPhotoModal } from './DisappearingPhotoModal';
 import { VoiceRecorder } from './VoiceRecorder';
+import { LeaveRoomModal } from './LeaveRoomModal';
+import { RoomInfoModal } from './RoomInfoModal';
 import { VoiceRecorder as AudioRecorderClass, SoundEffects } from '../utils/audio';
 import {
   formatTimeRemaining,
@@ -41,6 +43,7 @@ interface ChatViewProps {
   onSendTyping: (isTyping: boolean) => void;
   onStartCall: () => void;
   onClearConversation: () => void;
+  onLeaveRoom?: () => void;
   onCloseRoom: () => void;
   onBurnPhoto: (messageId: string) => void;
   onUpdateRoomTimer?: (defaultExpiration: number) => Promise<void>;
@@ -65,6 +68,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onSendTyping,
   onStartCall,
   onClearConversation,
+  onLeaveRoom,
   onCloseRoom,
   onBurnPhoto,
   onUpdateRoomTimer,
@@ -75,6 +79,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [showCredsModal, setShowCredsModal] = useState(false);
   const [showTimerModal, setShowTimerModal] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<MessageItem | null>(null);
 
   // Per-message custom expiration selector state
@@ -531,8 +536,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
             </button>
           )}
 
-          {/* Peer Avatar & Title */}
-          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          {/* Peer Avatar & Title (Clickable for Room Info) */}
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('light');
+              setShowCredsModal(true);
+            }}
+            id="chat-header-room-info-btn"
+            className="flex items-center gap-2 sm:gap-2.5 min-w-0 text-left cursor-pointer hover:opacity-85 active:scale-98 transition-all p-1 -m-1 rounded-xl"
+            title="View Room Info & Security Details"
+          >
             <div className="relative flex-shrink-0">
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#181B21] border border-[#272A31] flex items-center justify-center text-[#E8D8B8]">
                 <span className="material-symbols-outlined text-[18px] sm:text-[20px]">lock</span>
@@ -549,7 +563,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <span className="font-editorial text-sm sm:text-base text-[#F5F3EE] font-bold leading-tight truncate">
                   Private Space
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#181B21] text-[#9B9DA3] border border-[#272A31] hidden sm:inline">
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#181B21] text-[#E8D8B8] border border-[#272A31] hidden sm:inline">
                   {roomCode}
                 </span>
               </div>
@@ -565,7 +579,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 )}
               </div>
             </div>
-          </div>
+          </button>
         </div>
 
         {/* Right Header Actions */}
@@ -658,10 +672,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     setShowCredsModal(true);
                     setShowMenu(false);
                   }}
+                  id="room-info-menu-btn"
                   className="w-full px-3.5 py-2.5 text-xs text-left text-[#F5F3EE] hover:bg-[#181B21] flex items-center gap-2.5 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[#9B9DA3] text-[17px]">key</span>
-                  <span>Room PIN & Credentials</span>
+                  <span className="material-symbols-outlined text-[#E8D8B8] text-[17px]">info</span>
+                  <span>Room Info & Security</span>
                 </button>
 
                 {onOpenProfile && (
@@ -685,9 +700,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     setShowClearModal(true);
                   }}
                   id="clear-conversation-menu-btn"
-                  className="w-full px-3.5 py-2.5 text-xs text-left text-[#FF5C5C] hover:bg-[#181B21] flex items-center gap-2.5 cursor-pointer"
+                  className="w-full px-3.5 py-2.5 text-xs text-left text-[#9B9DA3] hover:text-[#F5F3EE] hover:bg-[#181B21] flex items-center gap-2.5 cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[17px]">delete</span>
+                  <span className="material-symbols-outlined text-[17px]">delete_sweep</span>
                   <span>Clear Conversation</span>
                 </button>
 
@@ -697,11 +712,25 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   type="button"
                   onClick={() => {
                     setShowMenu(false);
-                    if (confirm('Close and wipe this private room permanently?')) {
+                    setShowLeaveModal(true);
+                  }}
+                  id="leave-room-menu-btn"
+                  className="w-full px-3.5 py-2.5 text-xs text-left text-[#FF5C5C] hover:bg-[#FF5C5C]/10 flex items-center gap-2.5 cursor-pointer font-medium"
+                >
+                  <span className="material-symbols-outlined text-[17px]">logout</span>
+                  <span>Leave Private Room</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMenu(false);
+                    if (confirm('Close and wipe this private room permanently for both users?')) {
                       onCloseRoom();
                     }
                   }}
-                  className="w-full px-3.5 py-2.5 text-xs text-left text-[#FF5C5C] hover:bg-[#FF5C5C]/10 flex items-center gap-2.5 cursor-pointer"
+                  id="close-room-menu-btn"
+                  className="w-full px-3.5 py-2.5 text-xs text-left text-[#FF5C5C]/80 hover:text-[#FF5C5C] hover:bg-[#FF5C5C]/10 flex items-center gap-2.5 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[17px]">power_settings_new</span>
                   <span>Close & Burn Room</span>
@@ -714,12 +743,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* Message List Scroll Area */}
       <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-2 flex flex-col gap-2 relative z-10 overscroll-contain" id="chat-messages">
-        {/* Compact Room Expiration Badge */}
+        {/* Compact Room Expiration Badge (Clickable for Room Info) */}
         <div className="flex justify-center my-1 select-none">
-          <span className="px-3 py-0.5 rounded-full bg-[#181B21] border border-[#272A31] text-[#9B9DA3] font-mono text-[10px] sm:text-[11px] backdrop-blur-sm flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('light');
+              setShowCredsModal(true);
+            }}
+            id="chat-compact-room-info-btn"
+            className="px-3 py-0.5 rounded-full bg-[#181B21] border border-[#272A31] hover:border-[#E8D8B8]/40 text-[#9B9DA3] hover:text-[#F5F3EE] font-mono text-[10px] sm:text-[11px] backdrop-blur-sm flex items-center gap-1.5 transition-all cursor-pointer"
+            title="View Server Expiration & Room Details"
+          >
             <span className="material-symbols-outlined text-[13px] text-[#E8D8B8]">hourglass_top</span>
-            <span>{formatTimeRemaining(roomInfo.expiresAt)} Left in Room</span>
-          </span>
+            <span>{formatTimeRemaining(roomInfo.expiresAt, now)} Left in Room</span>
+          </button>
         </div>
 
         <MessageList
@@ -905,40 +943,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       )}
 
-      {/* Room Credentials Modal */}
-      {showCredsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B0C0F]/90 backdrop-blur-xl animate-fade-in font-sans">
-          <div className="w-full max-w-sm bg-[#121419] border border-[#272A31] shadow-2xl p-5 text-[#F5F3EE] rounded-[24px] animate-scale-up">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#E8D8B8] text-[20px]">shield</span>
-                <h3 className="font-headline-md text-sm sm:text-base font-bold text-[#F5F3EE]">Room Credentials</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCredsModal(false)}
-                className="w-8 h-8 rounded-full bg-[#181B21] flex items-center justify-center text-[#9B9DA3] hover:text-[#F5F3EE] hover:bg-[#272A31] cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px]">close</span>
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="p-3 bg-[#181B21] rounded-xl border border-[#272A31]">
-                <div className="text-[11px] text-[#6E7179] mb-1 font-mono uppercase">Room Code</div>
-                <div className="text-base font-mono font-bold text-[#F5F3EE]">{roomCode}</div>
-              </div>
-
-              {pin && (
-                <div className="p-3 bg-[#181B21] rounded-xl border border-[#272A31]">
-                  <div className="text-[11px] text-[#6E7179] mb-1 font-mono uppercase">Access PIN</div>
-                  <div className="text-lg font-mono font-bold text-[#E8D8B8] tracking-widest">{pin}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Room Information & Security Modal */}
+      <RoomInfoModal
+        isOpen={showCredsModal}
+        onClose={() => setShowCredsModal(false)}
+        roomInfo={roomInfo}
+        role={role}
+        pin={pin}
+        now={now}
+        otherUserOnline={otherUserOnline}
+        onOpenTimerModal={() => {
+          setShowCredsModal(false);
+          setShowTimerModal(true);
+        }}
+      />
 
       {/* Clear Conversation Confirmation Modal */}
       <ClearConversationModal
@@ -948,6 +966,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
           setShowClearModal(false);
           onClearConversation();
         }}
+      />
+
+      {/* Leave Room Confirmation Modal */}
+      <LeaveRoomModal
+        isOpen={showLeaveModal}
+        onClose={() => setShowLeaveModal(false)}
+        onConfirm={() => {
+          setShowLeaveModal(false);
+          if (onLeaveRoom) {
+            onLeaveRoom();
+          } else {
+            onNavigateHome?.();
+          }
+        }}
+        isOwner={role === 'owner'}
       />
     </div>
   );

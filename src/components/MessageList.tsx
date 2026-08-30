@@ -18,7 +18,9 @@ interface MessageListProps {
 
 export const isMessageExpired = (msg: MessageItem, now: number): boolean => {
   if (msg.isBurned) return true;
-  if (msg.expiresAt && msg.expiresAt <= now) return true;
+  // Primary: Server-authoritative expiresAt timestamp
+  if (typeof msg.expiresAt === 'number' && msg.expiresAt <= now) return true;
+  // Secondary: Burn-on-read viewed calculation if expiresAt was not populated
   if (
     msg.burnOnRead &&
     msg.viewedAt &&
@@ -28,6 +30,7 @@ export const isMessageExpired = (msg: MessageItem, now: number): boolean => {
   ) {
     return true;
   }
+  // Fallback: Fixed timer from creation time if expiresAt was not populated
   if (
     !msg.burnOnRead &&
     typeof msg.burnAfterSeconds === 'number' &&
@@ -42,28 +45,34 @@ export const isMessageExpired = (msg: MessageItem, now: number): boolean => {
 export const formatCountdown = (msg: MessageItem, now: number): string | null => {
   if (isMessageExpired(msg, now)) return null;
 
-  if (msg.expiresAt) {
-    const remainingMs = msg.expiresAt - now;
+  // 1. Burn on read before being revealed
+  if (msg.burnOnRead && !msg.viewedAt) {
+    return 'Burn on Read';
+  }
+
+  // 2. Server-authoritative expiration timestamp
+  const targetExpiresAt =
+    typeof msg.expiresAt === 'number'
+      ? msg.expiresAt
+      : msg.burnOnRead && msg.viewedAt && typeof msg.burnAfterSeconds === 'number'
+      ? msg.viewedAt + msg.burnAfterSeconds * 1000
+      : typeof msg.burnAfterSeconds === 'number' && msg.burnAfterSeconds > 0
+      ? msg.createdAt + msg.burnAfterSeconds * 1000
+      : undefined;
+
+  if (targetExpiresAt) {
+    const remainingMs = targetExpiresAt - now;
     if (remainingMs <= 0) return 'Burned';
-    const secs = Math.ceil(remainingMs / 1000);
-    if (secs < 60) return `${secs}s`;
-    const mins = Math.floor(secs / 60);
-    if (mins < 60) return `${mins}m`;
-    return `${Math.floor(mins / 60)}h`;
-  }
-
-  if (msg.burnOnRead) {
-    if (!msg.viewedAt) return 'Burn on Read';
-    const durationSecs = msg.burnAfterSeconds ?? 10;
-    const elapsed = Math.floor((now - msg.viewedAt) / 1000);
-    const left = Math.max(0, durationSecs - elapsed);
-    return left > 0 ? `${left}s` : 'Burned';
-  }
-
-  if (typeof msg.burnAfterSeconds === 'number' && msg.burnAfterSeconds > 0) {
-    const elapsed = Math.floor((now - msg.createdAt) / 1000);
-    const left = Math.max(0, msg.burnAfterSeconds - elapsed);
-    return left > 0 ? `${left}s` : 'Burned';
+    const totalSecs = Math.ceil(remainingMs / 1000);
+    if (totalSecs < 60) return `${totalSecs}s`;
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    if (mins < 60) {
+      return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+    }
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`;
   }
 
   return null;

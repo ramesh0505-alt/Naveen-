@@ -200,16 +200,51 @@ export function isStandalonePWA(): boolean {
   );
 }
 
-export function formatTimeRemaining(expiresAt: number): string {
-  const diff = Math.max(0, expiresAt - Date.now());
-  const hours = Math.floor(diff / (1000 * 60 * 60));
+export function formatTimeRemaining(expiresAt: number, now = Date.now()): string {
+  const diff = Math.max(0, expiresAt - now);
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
   if (hours > 0) {
     return `${hours}h ${minutes}m`;
   }
   return `${minutes}m ${seconds}s`;
+}
+
+export function formatDetailedTimeRemaining(expiresAt: number, now = Date.now()): string {
+  const diff = Math.max(0, expiresAt - now);
+  if (diff <= 0) return 'Expired';
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0 || days > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  parts.push(`${seconds}s`);
+  return parts.join(' ');
+}
+
+export function formatAbsoluteDateTime(timestamp: number): string {
+  if (!timestamp) return 'N/A';
+  const date = new Date(timestamp);
+  return date.toLocaleString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
 }
 
 export function formatDuration(seconds: number): string {
@@ -227,8 +262,11 @@ export function formatMessageTime(timestamp: number): string {
   });
 }
 
-export function getRoomFullUrl(roomCode: string): string {
-  const origin = window.location.origin;
+export function getRoomFullUrl(roomCode: string, pin?: string): string {
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  if (pin) {
+    return `${origin}/private/${roomCode}?pin=${encodeURIComponent(pin)}`;
+  }
   return `${origin}/private/${roomCode}`;
 }
 
@@ -254,5 +292,44 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     console.error('Failed to copy: ', err);
     return false;
   }
+}
+
+export function parseScannedQrData(qrText: string): { roomCode: string; pin?: string } | null {
+  if (!qrText || typeof qrText !== 'string') return null;
+  const raw = qrText.trim();
+
+  // Pattern 1: URL with /private/:code, /room/:code, /join/:code
+  try {
+    const parsedUrl = new URL(raw.startsWith('http') ? raw : `https://dummy.host/${raw.replace(/^\/+/, '')}`);
+    const pathname = parsedUrl.pathname;
+    const match = pathname.match(/\/(?:private|room|join)\/([a-zA-Z0-9_-]+)/i);
+    const pin = parsedUrl.searchParams.get('pin') || parsedUrl.searchParams.get('p') || undefined;
+    if (match && match[1]) {
+      return {
+        roomCode: match[1].toUpperCase(),
+        pin: pin || undefined,
+      };
+    }
+  } catch {}
+
+  // Pattern 2: Text matching ROOM: XYZ PIN: 123456 or formatted string
+  const roomMatch = raw.match(/ROOM:?\s*([a-zA-Z0-9_-]{4,20})/i);
+  const pinMatch = raw.match(/PIN:?\s*(\d{6})/i);
+  if (roomMatch && roomMatch[1]) {
+    return {
+      roomCode: roomMatch[1].toUpperCase(),
+      pin: pinMatch ? pinMatch[1] : undefined,
+    };
+  }
+
+  // Pattern 3: Simple Room Code (4-16 alphanumeric characters)
+  const clean = raw.replace(/[^a-zA-Z0-9]/g, '');
+  if (clean.length >= 4 && clean.length <= 16) {
+    return {
+      roomCode: clean.toUpperCase(),
+    };
+  }
+
+  return null;
 }
 

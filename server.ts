@@ -36,6 +36,7 @@ interface StoredSession {
   createdAt: number;
   expiresAt: number;
   lastSeenAt: number;
+  revokedAt?: number;
 }
 
 interface SocketClient {
@@ -156,6 +157,10 @@ function cleanupRoomMessages(roomCode: string, now = Date.now()): boolean {
       hasChanges = true;
 
       broadcastToRoom(roomCode, {
+        type: "message:expired",
+        messageId: msg.id,
+      });
+      broadcastToRoom(roomCode, {
         type: "message:burned",
         messageId: msg.id,
       });
@@ -163,7 +168,9 @@ function cleanupRoomMessages(roomCode: string, now = Date.now()): boolean {
   }
 
   if (hasChanges) {
-    messages.set(roomCode, [...roomMessages]);
+    // Keep only active non-expired messages in memory
+    const activeMessages = roomMessages.filter((m) => !m.isBurned);
+    messages.set(roomCode, activeMessages);
   }
   return hasChanges;
 }
@@ -258,8 +265,8 @@ async function startServer() {
     }
 
     const session = sessions.get(token);
-    if (!session) {
-      return res.status(401).json({ error: "Invalid session" });
+    if (!session || session.revokedAt) {
+      return res.status(401).json({ error: "Invalid or revoked session" });
     }
 
     if (session.expiresAt <= Date.now()) {
@@ -284,10 +291,12 @@ async function startServer() {
   // 1. Create Room
   app.post("/api/rooms", (req, res) => {
     try {
-      const durationHours = Number(req.body.durationHours) || 24; // default 24 hours
+      const durationHours = req.body.durationHours !== undefined ? Number(req.body.durationHours) : undefined;
+      const durationMinutes = req.body.durationMinutes !== undefined ? Number(req.body.durationMinutes) : undefined;
       const defaultMessageExpiration = Number(req.body.defaultMessageExpiration) || 0; // default 0 (room lifetime)
       const now = Date.now();
-      const expiresAt = now + durationHours * 60 * 60 * 1000;
+      const durationMs = durationMinutes ? durationMinutes * 60 * 1000 : (durationHours ? durationHours * 60 * 60 * 1000 : 24 * 60 * 60 * 1000);
+      const expiresAt = now + durationMs;
 
       let roomCode = generateRoomCode();
       while (findRoom(roomCode)) {
@@ -465,13 +474,37 @@ async function startServer() {
   app.get("/api/rooms/:roomCode/session", requireSession, (req, res) => {
     const session = (req as any).session as StoredSession;
     const room = (req as any).room as StoredRoom;
-    cleanupRoomMessages(room.roomCode);
-    const roomMessages = messages.get(room.roomCode) || [];
+    const now = Date.now();
+    cleanupRoomMessages(room.roomCode, now);
+
+    const roomMessages = (messages.get(room.roomCode) || [])
+      .filter((m) => !m.isBurned)
+      .map((m) => {
+        let effectiveExpiresAt = m.expiresAt;
+        if (typeof effectiveExpiresAt !== 'number') {
+          if (m.burnOnRead) {
+            if (m.viewedAt && typeof m.burnAfterSeconds === 'number' && m.burnAfterSeconds > 0) {
+              effectiveExpiresAt = m.viewedAt + m.burnAfterSeconds * 1000;
+            }
+          } else if (typeof m.burnAfterSeconds === 'number' && m.burnAfterSeconds > 0) {
+            effectiveExpiresAt = m.createdAt + m.burnAfterSeconds * 1000;
+          } else {
+            effectiveExpiresAt = room.expiresAt;
+          }
+        }
+        return {
+          ...m,
+          expiresAt: effectiveExpiresAt,
+        };
+      })
+      .filter((m) => !m.expiresAt || m.expiresAt > now);
 
     return res.json({
       success: true,
       role: session.role,
       roomInfo: getRoomInfo(room),
+      expiresAt: room.expiresAt,
+      serverTime: now,
       messages: roomMessages,
     });
   });
@@ -549,6 +582,8 @@ async function startServer() {
     let calculatedExpiresAt: number | undefined = undefined;
     if (computedBurnAfter && computedBurnAfter > 0 && !computedBurnOnRead) {
       calculatedExpiresAt = now + computedBurnAfter * 1000;
+    } else if (!computedBurnOnRead) {
+      calculatedExpiresAt = room.expiresAt;
     }
 
     const newMessage: MessageItem = {
@@ -691,7 +726,43 @@ async function startServer() {
     return res.json({ success: true, message: "Conversation cleared for both participants." });
   });
 
-  // 8. Close / Leave Room
+  // 8. Leave Room (Revoke this participant's session)
+  app.post("/api/rooms/:roomCode/leave", requireSession, (req, res) => {
+    const session = (req as any).session as StoredSession;
+    const room = (req as any).room as StoredRoom;
+
+    session.revokedAt = Date.now();
+    sessions.delete(session.sessionId);
+
+    if (session.role === "owner" && room.ownerSessionId === session.sessionId) {
+      room.ownerSessionId = null;
+    } else if (session.role === "guest" && room.guestSessionId === session.sessionId) {
+      room.guestSessionId = null;
+    }
+
+    // Close active WebSocket for this leaving session
+    for (const [ws, client] of activeSockets.entries()) {
+      if (client.sessionId === session.sessionId) {
+        try {
+          ws.send(JSON.stringify({ type: "session:revoked" }));
+          ws.close();
+        } catch {}
+        activeSockets.delete(ws);
+      }
+    }
+
+    const currentMemberCount = (room.ownerSessionId ? 1 : 0) + (room.guestSessionId ? 1 : 0);
+    broadcastToRoom(room.roomCode, {
+      type: "participant:left",
+      role: session.role,
+      memberCount: currentMemberCount,
+    });
+    updatePresence(room.roomCode);
+
+    return res.json({ success: true, message: "Participant left private space." });
+  });
+
+  // 9. Close / Burn Room for Everyone
   app.post("/api/rooms/:roomCode/close", requireSession, (req, res) => {
     const session = (req as any).session as StoredSession;
     const room = (req as any).room as StoredRoom;

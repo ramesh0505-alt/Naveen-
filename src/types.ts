@@ -89,10 +89,13 @@ export type WebSocketServerMessage =
   | { type: 'auth:success'; role: MemberRole; roomInfo: RoomInfo }
   | { type: 'auth:error'; message: string }
   | { type: 'presence'; otherUserOnline: boolean; otherUserRole: MemberRole | null; memberCount: number; roomStatus: RoomStatus }
+  | { type: 'participant:left'; role: MemberRole; memberCount: number }
+  | { type: 'session:revoked' }
   | { type: 'typing'; senderRole: MemberRole; isTyping: boolean }
   | { type: 'message:new'; message: MessageItem }
   | { type: 'message:cleared'; clearedBy: MemberRole }
   | { type: 'message:burned'; messageId: string }
+  | { type: 'message:expired'; messageId: string }
   | { type: 'message:viewed'; messageId: string; viewedAt: number; burnAfterSeconds?: number; expiresAt?: number }
   | { type: 'room:timer_updated'; defaultMessageExpiration: number; updatedBy: MemberRole }
   | { type: 'signal'; payload: CallSignalPayload }

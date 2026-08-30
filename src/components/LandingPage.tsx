@@ -5,12 +5,18 @@ interface LandingPageProps {
   onCreateRoom: () => void;
   onJoinRoom: () => void;
   onOpenProfile?: () => void;
+  hasActiveRoom?: boolean;
+  activeRoomCode?: string;
+  onResumeRoom?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
   onCreateRoom,
   onJoinRoom,
   onOpenProfile,
+  hasActiveRoom = false,
+  activeRoomCode = '',
+  onResumeRoom,
 }) => {
   return (
     <div className="flex flex-col w-full bg-[#131411] min-h-screen text-[#e4e2dd] relative overflow-hidden pb-28">
@@ -54,28 +60,45 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         <p className="font-body-lg text-body-lg text-[#c7c6cb] max-w-md mb-8 leading-relaxed">
           A private place to chat, send voice messages, and talk without phone numbers or usernames.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
-          <button
-            onClick={() => {
-              triggerHaptic('medium');
-              onCreateRoom();
-            }}
-            id="hero-create-room-btn"
-            className="w-full py-4 px-6 bg-[#d4c5a6] text-[#382f19] font-label-md rounded-full shadow-[0_4px_20px_rgba(212,197,166,0.15)] transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer font-semibold"
-          >
-            <span className="material-symbols-outlined text-[20px]">add</span>
-            <span>Create Private Room</span>
-          </button>
-          <button
-            onClick={() => {
-              triggerHaptic('light');
-              onJoinRoom();
-            }}
-            id="hero-join-room-btn"
-            className="w-full py-4 px-6 bg-transparent border border-[#46464b] text-[#e4e2dd] font-label-md rounded-full transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer hover:bg-[#1f201d]"
-          >
-            <span>Join a Room</span>
-          </button>
+        <div className="flex flex-col gap-3 w-full max-w-sm">
+          {hasActiveRoom && onResumeRoom && (
+            <button
+              onClick={() => {
+                triggerHaptic('success');
+                onResumeRoom();
+              }}
+              id="hero-resume-room-btn"
+              className="w-full py-4 px-6 bg-[#E8D8B8] text-[#121419] font-label-md rounded-full shadow-[0_4px_24px_rgba(232,216,184,0.25)] transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer font-bold animate-pulse"
+            >
+              <span className="material-symbols-outlined text-[20px]">chat</span>
+              <span>Resume Room {activeRoomCode ? `(${activeRoomCode})` : ''}</span>
+            </button>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full">
+            <button
+              onClick={() => {
+                triggerHaptic('medium');
+                onCreateRoom();
+              }}
+              id="hero-create-room-btn"
+              className="w-full py-4 px-6 bg-[#d4c5a6] text-[#382f19] font-label-md rounded-full shadow-[0_4px_20px_rgba(212,197,166,0.15)] transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer font-semibold"
+            >
+              <span className="material-symbols-outlined text-[20px]">add</span>
+              <span>Create Private Room</span>
+            </button>
+            <button
+              onClick={() => {
+                triggerHaptic('light');
+                onJoinRoom();
+              }}
+              id="hero-join-room-btn"
+              className="w-full py-4 px-6 bg-transparent border border-[#46464b] text-[#e4e2dd] font-label-md rounded-full transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer hover:bg-[#1f201d] animate-breathe"
+            >
+              <span className="material-symbols-outlined text-[20px] text-[#d4c5a6]">login</span>
+              <span>Join a Room</span>
+            </button>
+          </div>
         </div>
       </section>
 

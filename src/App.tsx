@@ -36,6 +36,11 @@ import {
   isLowDataActive,
   onNetworkChange,
 } from './utils/network';
+import {
+  getActiveSession,
+  saveActiveSession,
+  clearActiveSession,
+} from './utils/session';
 import type {
   RoomInfo,
   MemberRole,
@@ -99,8 +104,14 @@ export default function App() {
   const webrtcRef = useRef<WebRTCCallManager | null>(null);
   const callTimerRef = useRef<any>(null);
 
-  // 1. Check URL parameters and hash on mount (e.g. /private/:roomCode, /room/:code, ?room=, ?code=, #code)
+  // 1. Check URL parameters, hash, or saved persistent session on mount
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryPin = searchParams.get('pin') || searchParams.get('p') || '';
+    if (queryPin) {
+      setPin(queryPin);
+    }
+
     const pathname = window.location.pathname;
     const matchPath = pathname.match(/\/(?:private|room|join)\/([a-zA-Z0-9_-]+)/);
     if (matchPath && matchPath[1]) {
@@ -109,7 +120,6 @@ export default function App() {
       return;
     }
 
-    const searchParams = new URLSearchParams(window.location.search);
     const queryRoom = searchParams.get('room') || searchParams.get('code') || searchParams.get('r');
     if (queryRoom) {
       setRoomCode(queryRoom.toUpperCase());
@@ -119,8 +129,27 @@ export default function App() {
 
     const hash = window.location.hash.replace(/^#\/?(room\/|join\/|private\/)?/, '');
     if (hash && hash.length >= 4 && hash.length <= 20) {
-      setRoomCode(hash.toUpperCase());
+      const [hashCode, hashQuery] = hash.split('?');
+      setRoomCode(hashCode.toUpperCase());
+      if (hashQuery) {
+        const hashParams = new URLSearchParams(hashQuery);
+        const hashPin = hashParams.get('pin') || hashParams.get('p');
+        if (hashPin) setPin(hashPin);
+      }
       setCurrentScreen('JOIN');
+      return;
+    }
+
+    // 2. Restore active session across page reloads / app restarts
+    const savedSession = getActiveSession();
+    if (savedSession && savedSession.roomCode && savedSession.sessionToken) {
+      setRoomCode(savedSession.roomCode);
+      if (savedSession.pin) setPin(savedSession.pin);
+      setSessionToken(savedSession.sessionToken);
+      setRole(savedSession.role);
+      setExpiresAt(savedSession.expiresAt);
+      loadRoomSession(savedSession.roomCode, savedSession.sessionToken);
+      setCurrentScreen('CHAT');
     }
   }, []);
 
@@ -361,6 +390,7 @@ export default function App() {
 
           if (data.type === 'auth:error') {
             console.warn('Session verification notice:', data.message);
+            clearActiveSession();
             setSessionToken('');
             setSignalingStatus('disconnected');
             if (currentScreen === 'CHAT' || currentScreen === 'WAITING' || currentScreen === 'SHARE') {
@@ -383,6 +413,14 @@ export default function App() {
             if (data.memberCount >= 2 && (currentScreen === 'WAITING' || currentScreen === 'SHARE')) {
               setCurrentScreen('CHAT');
             }
+          } else if (data.type === 'participant:left') {
+            setOtherUserOnline(false);
+            setMemberCount((prev) => Math.max(1, prev - 1));
+          } else if (data.type === 'session:revoked') {
+            clearActiveSession();
+            setSessionToken('');
+            setExpiredReason('Your session has ended.');
+            setCurrentScreen('EXPIRED');
           } else if (data.type === 'typing') {
             setIsOtherTyping(data.isTyping);
           } else if (data.type === 'message:new') {
@@ -395,6 +433,8 @@ export default function App() {
           } else if (data.type === 'message:cleared') {
             setMessages([]);
             triggerHaptic('heavy');
+          } else if (data.type === 'message:expired') {
+            setMessages((prev) => prev.filter((m) => m.id !== data.messageId));
           } else if (data.type === 'message:burned') {
             setMessages((prev) =>
               prev.map((m) =>
@@ -427,9 +467,13 @@ export default function App() {
           } else if (data.type === 'signal') {
             handleIncomingSignal(data.payload);
           } else if (data.type === 'room:expired') {
+            clearActiveSession();
+            setSessionToken('');
             setExpiredReason('This private room has expired.');
             setCurrentScreen('EXPIRED');
           } else if (data.type === 'room:closed') {
+            clearActiveSession();
+            setSessionToken('');
             setExpiredReason(data.reason || 'This private room was closed.');
             setCurrentScreen('EXPIRED');
           }
@@ -791,23 +835,56 @@ export default function App() {
     }
   };
 
-  const handleCloseRoom = async () => {
+  const handleLeaveRoom = async () => {
     try {
-      await apiRequest(`/api/rooms/${roomCode}/close`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${sessionToken}`,
-        },
-      });
-      setExpiredReason('You have ended the private room.');
-      setCurrentScreen('EXPIRED');
+      if (roomCode && sessionToken) {
+        await apiRequest(`/api/rooms/${roomCode}/leave`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+      }
     } catch (err) {
-      console.error('Close room error:', err);
+      console.error('Leave room error:', err);
+    } finally {
+      clearActiveSession();
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+      setRoomCode('');
+      setPin('');
+      setSessionToken('');
+      setMessages([]);
+      setCurrentScreen('LANDING');
     }
   };
 
-  // Fetch initial messages & session on entering chat
+  const handleCloseRoom = async () => {
+    try {
+      if (roomCode && sessionToken) {
+        await apiRequest(`/api/rooms/${roomCode}/close`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${sessionToken}`,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Close room error:', err);
+    } finally {
+      clearActiveSession();
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+      setExpiredReason('You have ended the private room.');
+      setCurrentScreen('EXPIRED');
+    }
+  };
+
+  // Fetch initial messages & authoritative session state on entering chat or reconnecting
   const loadRoomSession = async (code: string, token: string) => {
     if (!code || !token) return;
     try {
@@ -815,9 +892,52 @@ export default function App() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (data.success) {
+        // 1. Authoritative Room Metadata
         setRoomInfo(data.roomInfo);
         setRole(data.role);
-        setMessages(data.messages || []);
+
+        // 2. Authoritative Room Expiration Timestamp
+        const serverRoomExpiresAt = Number(data.roomInfo?.expiresAt || data.expiresAt);
+        if (serverRoomExpiresAt > 0) {
+          setExpiresAt(serverRoomExpiresAt);
+          // Keep persistent session storage in sync with authoritative server expiry
+          saveActiveSession({
+            roomCode: code,
+            sessionToken: token,
+            role: data.role,
+            expiresAt: serverRoomExpiresAt,
+            pin: pin || undefined,
+          });
+        }
+
+        // 3. Authoritative Messages & Individual Expiration Timestamps
+        const now = Date.now();
+        const serverMessages: MessageItem[] = Array.isArray(data.messages) ? data.messages : [];
+        const authoritativeMessages = serverMessages
+          .filter((msg) => !msg.isBurned && (!msg.expiresAt || msg.expiresAt > now))
+          .map((msg) => {
+            let messageExpiresAt = msg.expiresAt;
+            if (typeof messageExpiresAt !== 'number') {
+              if (msg.burnOnRead) {
+                if (msg.viewedAt && typeof msg.burnAfterSeconds === 'number' && msg.burnAfterSeconds > 0) {
+                  messageExpiresAt = msg.viewedAt + msg.burnAfterSeconds * 1000;
+                }
+              } else if (typeof msg.burnAfterSeconds === 'number' && msg.burnAfterSeconds > 0) {
+                messageExpiresAt = msg.createdAt + msg.burnAfterSeconds * 1000;
+              } else if (serverRoomExpiresAt > 0) {
+                messageExpiresAt = serverRoomExpiresAt;
+              }
+            }
+
+            return {
+              ...msg,
+              expiresAt: messageExpiresAt,
+            };
+          })
+          .filter((msg) => !msg.expiresAt || msg.expiresAt > now);
+
+        // Completely replace local messages with authoritative server state
+        setMessages(authoritativeMessages);
       }
     } catch (e: any) {
       const errMsg = e?.message || '';
@@ -829,6 +949,7 @@ export default function App() {
         errMsg.includes('Room not found') ||
         errMsg.includes('expired or closed')
       ) {
+        clearActiveSession();
         setSessionToken('');
         if (currentScreen === 'CHAT' || currentScreen === 'WAITING' || currentScreen === 'SHARE') {
           setExpiredReason('Your session has ended or is no longer valid. Please re-enter the room.');
@@ -862,6 +983,13 @@ export default function App() {
       hasOwner: true,
       hasGuest: false,
     });
+    saveActiveSession({
+      roomCode: data.roomCode,
+      pin: data.pin,
+      sessionToken: data.sessionToken,
+      role: 'owner',
+      expiresAt: data.expiresAt,
+    });
     setIsCreateModalOpen(false);
     setCurrentScreen('SHARE');
   };
@@ -878,6 +1006,12 @@ export default function App() {
     setRole(data.role);
     setExpiresAt(data.expiresAt);
     setRoomInfo(data.roomInfo);
+    saveActiveSession({
+      roomCode: data.roomCode,
+      sessionToken: data.sessionToken,
+      role: 'guest',
+      expiresAt: data.expiresAt,
+    });
     loadRoomSession(data.roomCode, data.sessionToken);
     setCurrentScreen('CHAT');
   };
@@ -962,6 +1096,12 @@ export default function App() {
                 triggerHaptic('light');
                 setCurrentScreen('JOIN');
               }}
+              hasActiveRoom={Boolean(roomCode && sessionToken)}
+              activeRoomCode={roomCode}
+              onResumeRoom={() => {
+                loadRoomSession(roomCode, sessionToken);
+                setCurrentScreen('CHAT');
+              }}
             />
           )}
 
@@ -971,12 +1111,20 @@ export default function App() {
               pin={pin}
               expiresAt={expiresAt}
               onEnterRoom={handleEnterFromShare}
+              onScanPartnerQr={(scannedCode, scannedPin) => {
+                setRoomCode(scannedCode.toUpperCase());
+                if (scannedPin) {
+                  setPin(scannedPin);
+                }
+                setCurrentScreen('JOIN');
+              }}
             />
           )}
 
           {currentScreen === 'JOIN' && (
             <JoinRoomView
               initialRoomCode={roomCode}
+              initialPin={pin}
               onJoined={handleJoinedRoom}
               onCancel={handleGoHome}
             />
@@ -1014,6 +1162,7 @@ export default function App() {
               onSendTyping={handleSendTyping}
               onStartCall={handleStartCall}
               onClearConversation={handleClearConversation}
+              onLeaveRoom={handleLeaveRoom}
               onCloseRoom={handleCloseRoom}
               onBurnPhoto={handleBurnPhoto}
               onUpdateRoomTimer={handleUpdateRoomTimer}

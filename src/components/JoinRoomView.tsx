@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { RoomInfo } from '../types';
 import { apiRequest } from '../utils/api';
 import { triggerHaptic, hapticPinKey, hapticPinSuccess, hapticPinError } from '../utils/helpers';
+import { QrScannerModal } from './QrScannerModal';
 
 interface JoinRoomViewProps {
   initialRoomCode?: string;
+  initialPin?: string;
   onJoined: (data: {
     roomCode: string;
     sessionToken: string;
@@ -17,16 +19,26 @@ interface JoinRoomViewProps {
 
 export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
   initialRoomCode = '',
+  initialPin = '',
   onJoined,
   onCancel,
 }) => {
   const [roomCode, setRoomCode] = useState<string>(() => extractCode(initialRoomCode));
-  const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [digits, setDigits] = useState<string[]>(() => {
+    if (initialPin && initialPin.length >= 1) {
+      const clean = initialPin.replace(/[^0-9]/g, '').slice(0, 6).split('');
+      const arr = ['', '', '', '', '', ''];
+      clean.forEach((c, i) => { arr[i] = c; });
+      return arr;
+    }
+    return ['', '', '', '', '', ''];
+  });
   const [isJoining, setIsJoining] = useState<boolean>(false);
   const [isCheckingRoom, setIsCheckingRoom] = useState<boolean>(false);
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState<boolean>(false);
+  const [isScannerOpen, setIsScannerOpen] = useState<boolean>(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -51,6 +63,16 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
       if (parsed) setRoomCode(parsed);
     }
   }, [initialRoomCode]);
+
+  // Sync if initialPin prop updates
+  useEffect(() => {
+    if (initialPin && initialPin.length >= 1) {
+      const clean = initialPin.replace(/[^0-9]/g, '').slice(0, 6).split('');
+      const arr = ['', '', '', '', '', ''];
+      clean.forEach((c, i) => { arr[i] = c; });
+      setDigits(arr);
+    }
+  }, [initialPin]);
 
   // Automatically check room status when code reaches 6+ chars
   useEffect(() => {
@@ -104,6 +126,19 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
       if (index < 5) {
         inputRefs.current[index + 1]?.focus();
       }
+    }
+  };
+
+  const handleScanSuccess = (data: { roomCode: string; pin?: string }) => {
+    setIsScannerOpen(false);
+    if (data.roomCode) {
+      setRoomCode(data.roomCode);
+    }
+    if (data.pin) {
+      const clean = data.pin.replace(/[^0-9]/g, '').slice(0, 6).split('');
+      const arr = ['', '', '', '', '', ''];
+      clean.forEach((c, i) => { arr[i] = c; });
+      setDigits(arr);
     }
   };
 
@@ -222,6 +257,12 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
 
         {/* Title and Subtitle */}
         <div className="text-center max-w-sm mb-5">
+          {initialPin && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#7ED6A5]/10 border border-[#7ED6A5]/25 text-[11px] font-mono text-[#7ED6A5] mb-2.5 animate-fade-in">
+              <span className="material-symbols-outlined text-[14px]">qr_code_scanner</span>
+              <span>Scanned from Partner's Screen</span>
+            </div>
+          )}
           <span className="font-mono text-[11px] text-[#E8D8B8] uppercase tracking-widest block mb-1.5 font-semibold">
             Access Required
           </span>
@@ -229,7 +270,9 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
             Join Private Room
           </h1>
           <p className="font-body-sm text-xs text-[#9B9DA3]">
-            Enter the 6-digit PIN shared with you to enter this space.
+            {initialPin
+              ? 'Credentials detected. Tap Enter Room to join your partner.'
+              : 'Enter the 6-digit PIN shared with you to enter this space.'}
           </p>
         </div>
 
@@ -239,6 +282,31 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
             isShaking ? 'animate-shake' : ''
           }`}
         >
+          {/* Scan Partner QR Bar */}
+          <button
+            type="button"
+            onClick={() => {
+              triggerHaptic('medium');
+              setIsScannerOpen(true);
+            }}
+            id="join-scan-partner-qr-btn"
+            className="w-full mb-4 py-2.5 px-4 rounded-xl bg-[#1C2027] hover:bg-[#252A34] text-[#E8D8B8] border border-[#E8D8B8]/30 hover:border-[#E8D8B8]/60 font-semibold text-xs flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer group active:scale-98"
+          >
+            <span className="material-symbols-outlined text-[18px] text-[#E8D8B8] group-hover:scale-110 transition-transform">
+              photo_camera
+            </span>
+            <span>Scan Partner's QR</span>
+            <span className="text-[10px] bg-[#E8D8B8]/15 text-[#E8D8B8] px-1.5 py-0.5 rounded font-mono ml-auto">
+              Camera
+            </span>
+          </button>
+
+          <div className="flex items-center gap-2 w-full mb-4">
+            <div className="flex-1 h-[1px] bg-[#272A31]"></div>
+            <span className="font-mono text-[10px] uppercase text-[#6E7179] tracking-wider">or enter manually</span>
+            <div className="flex-1 h-[1px] bg-[#272A31]"></div>
+          </div>
+
           <form onSubmit={handleJoin} className="flex flex-col items-center gap-4.5 w-full">
             {/* Room Code input */}
             <div className="w-full">
@@ -337,6 +405,13 @@ export const JoinRoomView: React.FC<JoinRoomViewProps> = ({
           <span>End-to-End Encrypted · 2 Person Limit</span>
         </div>
       </div>
+
+      {/* Camera QR Scanner Modal */}
+      <QrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
+      />
     </div>
   );
 };
